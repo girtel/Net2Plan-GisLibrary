@@ -5,10 +5,24 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Map;
 
-public class GisLayer {
+import net2plan.gis.importer.GisMultilayer;
+
+public class GisLayer 
+{
+	private GisConstants.GISLAYERTYPE typeOfObjectsInside;
+	private String name;
+	private GisMultilayer gml;
 	
-	String name;
+	public GisMultilayer getGml () { return gml; }
+	public boolean isBuildingsLayer () { return typeOfObjectsInside == GisConstants.GISLAYERTYPE.BUILDINGS; }
+	public boolean isRoadsLayer () { return typeOfObjectsInside == GisConstants.GISLAYERTYPE.ROADS; }
+	public Map<,Building> getBuildings () 
+	{
+		
+	} 
+	
 	ArrayList<GisObject> goList = new ArrayList<GisObject>();
 	
 	public GisLayer(String layerName, String content){

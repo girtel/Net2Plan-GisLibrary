@@ -4,14 +4,14 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
-public class GisObject {
-	
+public class GisObject 
+{
 	String rawData;
 	Map<String, String> properties = new HashMap<String,String>();
 	Map<String, String> geometry = new HashMap<String,String>();
-	
-	public GisObject(String line){
-		
+
+	public GisObject(String line)
+	{
 		int index1;
 		int index2;
 		this.rawData = line;
