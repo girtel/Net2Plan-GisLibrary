@@ -68,4 +68,12 @@ public class GisObject
 		}
 		return track;
 	}
+
+	public GeoJSONFeature getJlf() {return jlf;}
+
+	public String getType() {return type;}
+
+	public Map<String, String> getProperties() {return properties;}
+
+	public String getGeometryType() {return geometryType;}
 }

@@ -52,11 +52,10 @@ public class GisLayer
 	
 	public boolean isRoadsLayer () { return typeOfObjectsInside == GisConstants.GISLAYERTYPE.ROADS; }
 	
-	public String getLayerName(){
-		return this.name;
-	}	
+	public String getLayerName(){return this.name;}	
 
-	public Map<Long,GisObject> getObjects(){
-		return this.mapUid2GisObject;
-	}
+	public Map<Long,GisObject> getObjects(){return this.mapUid2GisObject;}
+	
+	public GisObject getObject(Long id){return this.mapUid2GisObject.get(id);}
+	
 }

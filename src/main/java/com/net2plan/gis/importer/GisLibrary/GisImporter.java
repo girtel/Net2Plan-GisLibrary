@@ -35,30 +35,11 @@ public class GisImporter
 			File path = fileIterator.next();
 
 			GeoJSONParser parser = objectMapper.readValue(path, GeoJSONParser.class);
+			
+			//print
 			System.out.println("Loaded " + parser.name + " from " + name);
+			
 			List coordinatesList = (List) parser.features.get(0).geometry.coordinates;
-			//List point = (List) al.get(0);
-			//Point2D point2d = new Point2D.Double((double)point.get(0), (double)point.get(1));
-			//System.out.println(point2d.getX()+" "+point2d.getY());
-			
-			/*System.out.println(coordinatesList.get(0));
-			List coordinatesList1 = (List) coordinatesList.get(0);
-			ListIterator<List> litr1 = coordinatesList1.listIterator();
-			while (litr1.hasNext()) {
-				List point = (List) litr1.next();
-				Point2D point2d = new Point2D.Double((double) point.get(0), (double) point.get(1));
-				System.out.println(point2d.getX()+" "+point2d.getY());
-			}
-			*/
-			
-			
-			System.out.println("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*");
-			/*ListIterator<String> iterator = ls.listIterator();
-			while(iterator.hasNext()){
-				System.out.println(iterator.next());
-
-					System.out.println("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*");
-				}*/
 			// Creación de GisMultilayer
 			if (!this.gmlList.containsKey(name)) {
 				gml = new GisMultilayer(name);
@@ -91,51 +72,4 @@ public class GisImporter
 
 		return gml;
 	}
-	/*	
-	//prueba
-	System.out.println("Type: " + cfj.type);
-	System.out.println("Name: " + cfj.name);
-	System.out.println("Crs:{ type: " + cfj.crs.type+", properties: { "+ cfj.crs.properties.get("name")+"}}");
-	System.out.println("Features: {type: " + cfj.features.get(0).type+", properties: "+cfj.features.get(0).properties.get("id")+
-			", "+cfj.features.get(0).properties.get("building")+", "+cfj.features.get(0).geometry.get("coordinates"));
-	
-	System.out.println("Features: {type: " + cfj.features.get(1).type+", properties: "+cfj.features.get(1).properties.get("id")+
-			", "+cfj.features.get(1).properties.get("building")+", "+cfj.features.get(1).geometry.get("coordinates"));
-	*/
-	
-	public static void main(String[] args) throws FileNotFoundException, IOException
-	{
-		GisImporter gi = new GisImporter();
-		List<File> files = new ArrayList<File>();
-		File path = new File("C:/Users/jlrg_/Desktop/UPCT/QGIS/OSM2QGIS/Proyecto/GisLibrary/src/main/resources/Edificios.geojson");
-		File path1 = new File("C:/Users/jlrg_/Desktop/UPCT/QGIS/OSM2QGIS/Proyecto/GisLibrary/src/main/resources/Carreteras.geojson");
-		files.add(path);
-		files.add(path1);
-		GisMultilayer gml = gi.load("Cartagena", files);
-		files.clear();
-		files.add(path1);
-		GisMultilayer gml1 = gi.load("Lorca", files);
-		
-		System.out.println("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*");
-		System.out.println("GML name: "+gml.getName());
-		System.out.println("Layer names del gml "+gml.getLayerNames());
-		System.out.println("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*");
-		//System.out.println("GML name: "+gml1.getName());
-		//System.out.println("Layer names del gml "+gml1.getLayerNames());
-		/*System.out.println("Es building layer?: "+ gml.getLayer("Carreteras").isBuildingsLayer()+", es road layer?: "+ gml.getLayer("Carreteras").isRoadsLayer());
-		List<GisObjectPablo> objects = gml.getLayer("Carreteras").objects;
-		System.out.println("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*");
-		System.out.println(objects.get(0).getGml());
-		System.out.println(objects.get(0).getGml());
-		ListIterator<GisObjectPablo> litr = objects.listIterator();
-		while(litr.hasNext()){
-			GisObjectPablo object = litr.next();
-				System.out.println(object.getGml().name);
-				System.out.println(object.getGl().name);
-				System.out.println("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*");
-			}
-		System.out.println();*/
-		
-	}
-	
 }
