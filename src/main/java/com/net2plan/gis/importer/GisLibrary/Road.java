@@ -16,8 +16,6 @@ public class Road extends GisObject
 	
 	public Point2D getEndPoint () { return this.getTrack().get(this.getTrack().size()-1); }
 	
-	//public List<Point2D> getRoadTrack () { return this.getTrack(); }
-	
 	public boolean hasTrack () { return !this.getTrack().isEmpty(); } 
 }
 

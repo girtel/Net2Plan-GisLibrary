@@ -25,18 +25,11 @@ public class GisLayer
 	SortedMap<Long,GisObject> mapUid2GisObject = new TreeMap<> ();
 	GisMultilayer gml;
 
-	public GisLayer(GisMultilayer gml, GeoJSONParser cfj){
+	public GisLayer(GisMultilayer gml, GeoJSONParser gJSONParser){
 		this.gml = gml;
-		this.name = cfj.name;
-		setLayerType(cfj.features.get(0).geometry.type);	
+		this.name = gJSONParser.name;
+		setLayerType(gJSONParser.features.get(0).geometry.type);	
 	}
-	
-	
-	public long getNewUniqueId () {
-		if(this.mapUid2GisObject.isEmpty()){return 1;}
-		return this.mapUid2GisObject.lastKey() + 1; }
-	
-	public GisMultilayer getGml () { return gml; }
 	
 	private void setLayerType(String type){
 		if (type.equals("Polygon")){this.typeOfObjectsInside = GisConstants.GISLAYERTYPE.BUILDINGS;}
@@ -44,9 +37,13 @@ public class GisLayer
 		else this.typeOfObjectsInside = GisConstants.GISLAYERTYPE.UNKNOWN;
 	}
 	
-	public void addObject(GisObject object){
-		mapUid2GisObject.put(object.getId(), object);
-	}
+	public long getNewUniqueId () {
+		if(this.mapUid2GisObject.isEmpty()){return 1;}
+		return this.mapUid2GisObject.lastKey() + 1; }
+	
+	public GisMultilayer getGml () { return gml; }
+	
+	public void addObject(GisObject object){ mapUid2GisObject.put(object.getId(), object); }
 	
 	public boolean isBuildingsLayer () { return typeOfObjectsInside == GisConstants.GISLAYERTYPE.BUILDINGS; }
 	

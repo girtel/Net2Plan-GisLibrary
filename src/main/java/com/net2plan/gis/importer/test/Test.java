@@ -20,8 +20,9 @@ public class Test {
 
 		GisImporter gi = new GisImporter();
 		List<File> files = new ArrayList<File>();
-		File path = new File("C:/Users/jlrg_/Documents/Net2Plan-GisLibrary/src/main/resources/Edificios.geojson");
-		File path1 = new File("C:/Users/jlrg_/Documents/Net2Plan-GisLibrary/src/main/resources/Carreteras.geojson");
+		
+		File path = new File("C:/Users/jlrg_/Desktop/UPCT/QGIS/OSM2QGIS/Edificios.geojson");
+		File path1 = new File("C:/Users/jlrg_/Desktop/UPCT/QGIS/OSM2QGIS/Carreteras.geojson");
 
 		// Cargamos un gml de prueba
 		files.add(path);
@@ -55,7 +56,7 @@ public class Test {
 					while (object_iterator.hasNext() && counter < 10) { // 3.1
 						Building go = (Building) object_iterator.next();
 						System.out.println("Object id: " + go.getId());
-						System.out.println("Coordinates: " + go.getJlf().geometry.coordinates);
+						System.out.println("Coordinates: " + go.getGeoJSONFeatures().geometry.coordinates);
 						System.out.println("Radius: " + go.getRadius());
 						System.out.println("Center: " + go.getCenter());
 						counter++;
@@ -64,7 +65,7 @@ public class Test {
 					while (object_iterator.hasNext() && counter < 10) { // 3.2
 						Road go = (Road) object_iterator.next();
 						System.out.println("Object id: " + go.getId());
-						System.out.println("Coordinates: " + go.getJlf().geometry.coordinates);
+						System.out.println("Coordinates: " + go.getGeoJSONFeatures().geometry.coordinates);
 						System.out.println("Origin point: " + go.getOriginPoint().toString());
 						System.out.println("End point: " + go.getEndPoint());
 						counter++;

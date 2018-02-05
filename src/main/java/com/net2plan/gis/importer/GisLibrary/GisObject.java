@@ -12,15 +12,13 @@ public class GisObject
 	private final GisMultilayer gml;
 	private final GisLayer gl;
 	private final long id;
-	private final GeoJSONFeature jlf;
+	private final GeoJSONFeature gjsonfeatures;
 	private  List<Point2D> track;
 	private String type;
 	private Map<String,String> properties;
 	private String geometryType;
 	
 	//private final String idAccordingToGeoJsonFile;
-	//private final long internalUniqueId; // unique at GisMultilayer level
-	//private List<Point2D> track;
 
 	public GisObject(GeoJSONFeature object, GisLayer belongingLayer, long id /*, String idAccordingToGeoJsonFile , List<Point2D> track*/)
 	{
@@ -28,14 +26,12 @@ public class GisObject
 		this.gml = belongingLayer.getGml ();
 		this.gl = belongingLayer;
 		this.id = id;
-		this.jlf = object;
+		this.gjsonfeatures = object;
 		this.type = object.type;
 		this.properties = object.properties;
 		this.geometryType = object.geometry.type;
 		this.track = setTrack();
 		//this.idAccordingToGeoJsonFile = idAccordingToGeoJsonFile;
-		//this.internalUniqueId = gml.getNewUniqueId ();
-		//this.track = new ArrayList<> (track);
 	}
 	
 	
@@ -48,28 +44,30 @@ public class GisObject
 	public List<Point2D> getTrack () {return track;}
 
 	public List<Point2D> setTrack () { 
+		
 		List<Point2D> track = new ArrayList<Point2D>();
-		List coordinatesList = (List) jlf.geometry.coordinates;
-		if(this.gl.isBuildingsLayer()){
-			List coordinatesList1 = (List) coordinatesList.get(0);
-			ListIterator<List> litr = coordinatesList1.listIterator();
-			while (litr.hasNext()) {
-				List point = (List) litr.next();
-				Point2D point2d = new Point2D.Double((double) point.get(0), (double) point.get(1));
-				track.add(point2d);
-			}	
-		}else if(this.gl.isRoadsLayer()){
+		List coordinatesList = (List) gjsonfeatures.geometry.coordinates;
+		
+		if(this.gl.isRoadsLayer()){
 			ListIterator <List> litr = coordinatesList.listIterator();
 			while(litr.hasNext()){
 				List point = (List) litr.next();
 				Point2D point2d = new Point2D.Double((double)point.get(0), (double)point.get(1));
 				track.add(point2d);
 			}
+		}else if(this.gl.isBuildingsLayer()){
+			List coordinatesList1 = (List) coordinatesList.get(0);
+			ListIterator<List> litr = coordinatesList1.listIterator();
+			while (litr.hasNext()) {
+				List point = (List) litr.next();
+				Point2D point2d = new Point2D.Double((double) point.get(0), (double) point.get(1));
+				track.add(point2d);
+			}
 		}
 		return track;
 	}
 
-	public GeoJSONFeature getJlf() {return jlf;}
+	public GeoJSONFeature getGeoJSONFeatures() {return gjsonfeatures;}
 
 	public String getType() {return type;}
 

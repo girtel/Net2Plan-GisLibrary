@@ -39,7 +39,6 @@ public class GisImporter
 			//print
 			System.out.println(name+": "+parser.name+" layer loaded.");
 			
-			List coordinatesList = (List) parser.features.get(0).geometry.coordinates;
 			// Creación de GisMultilayer
 			if (!this.gmlList.containsKey(name)) {
 				gml = new GisMultilayer(name);
