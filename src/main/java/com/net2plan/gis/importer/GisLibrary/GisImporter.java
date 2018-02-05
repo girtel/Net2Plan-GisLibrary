@@ -37,7 +37,7 @@ public class GisImporter
 			GeoJSONParser parser = objectMapper.readValue(path, GeoJSONParser.class);
 			
 			//print
-			System.out.println("Loaded " + parser.name + " from " + name);
+			System.out.println(name+": "+parser.name+" layer loaded.");
 			
 			List coordinatesList = (List) parser.features.get(0).geometry.coordinates;
 			// Creación de GisMultilayer
