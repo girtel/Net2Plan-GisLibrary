@@ -6,7 +6,7 @@ import java.util.List;
 public class Road extends GisObject
 {
 
-	public Road(GeoJSONFeature jlf, GisLayer belongingLayer, long id/*, String idAccordingToGeoJsonFile, List<Point2D> track*/)
+	public Road(GeoJSONParser.GeoJSONFeature jlf, GisLayer belongingLayer, long id/*, String idAccordingToGeoJsonFile, List<Point2D> track*/)
 	{
 		super(jlf, belongingLayer, id/*, idAccordingToGeoJsonFile, track*/);
 	}

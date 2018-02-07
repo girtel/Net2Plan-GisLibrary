@@ -4,12 +4,12 @@ import java.awt.geom.Point2D;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import com.net2plan.gis.importer.GisLibrary.*;
 
 public class Building extends GisObject
 {
-	private String type;
 	
-	public Building(GeoJSONFeature jlf, GisLayer belongingLayer, long id/*, String idAccordingToGeoJsonFile, List<Point2D> track*/)
+	public Building(GeoJSONParser.GeoJSONFeature jlf, GisLayer belongingLayer, long id/*, String idAccordingToGeoJsonFile, List<Point2D> track*/)
 	{
 		super(jlf, belongingLayer, id/*, idAccordingToGeoJsonFile, track*/);
 		// TODO Auto-generated constructor stub

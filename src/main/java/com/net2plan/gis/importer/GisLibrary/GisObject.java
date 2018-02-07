@@ -6,21 +6,24 @@ import java.util.Collections;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.Optional;
+import java.util.SortedMap;
 
-public class GisObject
+public class GisObject implements Comparable <GisObject>
 {
 	private final GisMultilayer gml;
 	private final GisLayer gl;
 	private final long id;
-	private final GeoJSONFeature gjsonfeatures;
-	private  List<Point2D> track;
-	private String type;
-	private Map<String,String> properties;
-	private String geometryType;
+	private final GeoJSONParser.GeoJSONFeature gjsonfeatures;
+	private final String type;
+	private final String geometryType;
+	private SortedMap<String,String> properties;
+	private final List<Point2D> track;
+
 	
 	//private final String idAccordingToGeoJsonFile;
 
-	public GisObject(GeoJSONFeature object, GisLayer belongingLayer, long id /*, String idAccordingToGeoJsonFile , List<Point2D> track*/)
+	public GisObject(GeoJSONParser.GeoJSONFeature object, GisLayer belongingLayer, long id /*, String idAccordingToGeoJsonFile , List<Point2D> track*/)
 	{
 		super();
 		this.gml = belongingLayer.getGml ();
@@ -67,11 +70,38 @@ public class GisObject
 		return track;
 	}
 
-	public GeoJSONFeature getGeoJSONFeatures() {return gjsonfeatures;}
+	public GeoJSONParser.GeoJSONFeature getGeoJSONFeatures() {return gjsonfeatures;}
 
 	public String getType() {return type;}
 
-	public Map<String, String> getProperties() {return properties;}
+	public SortedMap<String, String> getProperties() {return Collections.unmodifiableSortedMap(this.properties);}
 
 	public String getGeometryType() {return geometryType;}
+
+	public void addProperty(String propertyName, String propertyValue){
+		this.properties.put(propertyName, propertyName);
+	}
+	
+	public void removeProperty(String propertyName, String propertyValue){
+		this.properties.remove(propertyName, propertyName);
+	}
+	
+	public Optional<String> getProperty (String propertyName){
+		return Optional.of(this.properties.get(propertyName));
+	}
+	
+	// TODO
+	public double getPropertyAsDouble (String propertyName , double defaultValue){
+		return 0;
+	}
+
+	@Override
+	public int compareTo(GisObject o) {
+		final int cLayers = this.getLayer().compareTo (o.getLayer());
+		if (cLayers != 0) return cLayers;
+		 return Long.compare(this.getId () , o.getId ()); 
+
+		// TODO Auto-generated method stub
+		return 0;
+	}
 }

@@ -15,10 +15,13 @@ import com.net2plan.gis.importer.GisLibrary.*;
 public class Test {
 
 	public static void main(String[] args) throws Throwable {
-//s1
 		List<GisMultilayer> gmlL = new ArrayList<GisMultilayer>();
+		GisMultilayer gml_C = new GisMultilayer("Cartagena");
+		GisMultilayer gml_L = new GisMultilayer("Lorca");
+		gmlL.add(gml_C);
+		gmlL.add(gml_L);
 
-		GisImporter gi = new GisImporter();
+		//GisImporter gi = new GisImporter();
 		List<File> files = new ArrayList<File>();
 		
 		File path = new File("C:/Users/jlrg_/Desktop/UPCT/QGIS/OSM2QGIS/Edificios.geojson");
@@ -26,17 +29,26 @@ public class Test {
 
 		// Cargamos un gml de prueba
 		files.add(path);
-		files.add(path1);
-		gmlL.add(gi.load("Cartagena", files));
+		//files.add(path1);
+		gml_C.buildFromGeoJson(files);
 
 		// Cargamos otro gml de prueba
 		files.clear();
 		files.add(path1);
-		gmlL.add(gi.load("Lorca", files));
+		gml_L.buildFromGeoJson(files);
 
 		ListIterator<GisMultilayer> gml_iterator = gmlL.listIterator();
 		while (gml_iterator.hasNext()) { // 1
 			GisMultilayer gml = gml_iterator.next();
+			/*
+			System.out.println("CARGAR GL A MANO");
+			gml.addLayer(path1);
+			System.out.println(gml.getLayerNames());
+			System.out.println(gml.getLayer("Carreteras").name);
+			gml.setName("Lorca");
+			System.out.println(gml.getLayer("Carreteras").getGml().getName());
+			*/
+			
 			System.out.println("/////////////////////////////////////////////");
 			System.out.println("GML name: " + gml.getName());
 			System.out.println("Layer names del gml " + gml.getLayerNames());
