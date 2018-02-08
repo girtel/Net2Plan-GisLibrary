@@ -15,12 +15,6 @@ import com.net2plan.gis.importer.GisLibrary.*;
 public class Test {
 
 	public static void main(String[] args) throws Throwable {
-		try{
-		System.out.println(Double.parseDouble("Hola"));
-		}catch(Exception e){
-			System.out.println("1234564789");
-		}
-		System.out.println(Double.valueOf("123.2"));
 		
 		List<GisMultilayer> gmlL = new ArrayList<GisMultilayer>();
 		GisMultilayer gml_C = new GisMultilayer("Cartagena");
@@ -35,6 +29,7 @@ public class Test {
 		File path1 = new File("C:/Users/jlrg_/Desktop/UPCT/QGIS/OSM2QGIS/Carreteras.geojson");
 
 		// Cargamos un gml de prueba
+		files.add(path);
 		files.add(path);
 		//files.add(path1);
 		gml_C.buildFromGeoJson(files);
@@ -59,6 +54,9 @@ public class Test {
 			System.out.println("/////////////////////////////////////////////");
 			System.out.println("GML name: " + gml.getName());
 			System.out.println("Layer names del gml " + gml.getLayerNames());
+			System.out.println("Buildings layers loaded: " + gml.getLayersByName("Edificios").size());
+			System.out.println("Roads layers loaded: " + gml.getLayersByName("Carreteras").size());
+			System.out.println("layer name from id=1 : " + gml.getLayerName(1L));
 			Map<Long, GisLayer> layers = gml.getLayers();
 
 			// Imprimimos el Map con un Iterador
@@ -66,8 +64,8 @@ public class Test {
 			System.out.println("#/#/#/#/#/#/#/#/#/#/#/#/#/#/#/#/#/#/#/");
 			while (gl_iterator.hasNext()) { // 2
 				Long key = gl_iterator.next();
-				System.out.println("#### " + key + " ####");
 				GisLayer gl = gml.getLayer(key);
+				System.out.println("#### " + key +": "+gl.getName() + " ####");
 				Collection<GisObject> goc = gl.getObjects().values();
 				Iterator<GisObject> object_iterator = goc.iterator();
 				int counter = 0;

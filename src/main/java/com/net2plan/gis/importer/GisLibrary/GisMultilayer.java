@@ -12,6 +12,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.Set;
 import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeMap;
@@ -21,27 +22,18 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class GisMultilayer implements Cloneable{
 	
-	
-	/**		Añadir un campo "uniqueLayerId" de tipo long al GisLayer. 
-	 ** 	Que no se repita entre dos capas del mismo gml. Ahora el identificador único de un objeto es (uiqueLayerId,uniqueObjetOdWithinLayer). 
-	 *		No se borra el name, pero puede haber mas de una capa con el mismo name. Ahora  mapLayerName2Layer tiene que devolver Set<GisLayer>, 
-	 *		poruqe puede haber más de una. Tienes que hacer un mapLayerId2Layer<Long,GisLayer>
-	*/
-	
 	String name;
-	//SortedMap<String, GisLayer> mapLayerName2Layer = new TreeMap<>();
-	SortedSet<GisLayer> mapLayerName2Layer = new TreeSet<>();
+	SortedMap<Long, String> mapLayerId2LayerName = new TreeMap<>();
 	SortedMap<Long, GisLayer> mapLayerId2Layer = new TreeMap<>();
-	//SortedMap<Long,GisObject> mapUid2GisObject = new TreeMap<> ();
 
 	public GisMultilayer(String name) {
 		this.name = name;
 	}
 	
+	
 	public long getNewLayerUniqueId () {
 		if(this.mapLayerId2Layer.isEmpty()){return 1;}
 		return this.mapLayerId2Layer.lastKey() + 1; }
-	
 	
 	public void buildFromGeoJson(List<File> files) throws IOException, CloneNotSupportedException{
 		ObjectMapper objectMapper = new ObjectMapper();
@@ -87,18 +79,16 @@ public class GisMultilayer implements Cloneable{
 
 	}
 
-	
 	public void setName(String name){
 		this.name = name;
 		try{updateChilds();}catch(Exception e){}
 	}
 
-	public String getName() {
-		return this.name;
-	}
+	public String getName() { return this.name; }
 	
 	public void addLayer(GisLayer gl) throws IOException {
 		this.mapLayerId2Layer.put(this.getNewLayerUniqueId(), gl);
+		this.mapLayerId2LayerName.put(this.getNewLayerUniqueId(), gl.getName());
 		try{updateChilds();}catch(Exception e){}
 	} 
 	
@@ -109,6 +99,7 @@ public class GisMultilayer implements Cloneable{
 		
 		GisLayer gl = new GisLayer((GisMultilayer) this.clone(), parser, layerId);
 		this.mapLayerId2Layer.put(layerId, gl);
+		this.mapLayerId2LayerName.put(layerId, gl.getName());
 		try{updateChilds();}catch(Exception e){}
 		
 		return gl;
@@ -118,24 +109,30 @@ public class GisMultilayer implements Cloneable{
 		GisLayer gl = this.mapLayerId2Layer.get(id);
 		gl.setGml(null);
 		this.mapLayerId2Layer.remove(id);
+		this.mapLayerId2LayerName.remove(id);
+		try{updateChilds();}catch(Exception e){}
 	}
 
-	public SortedMap<Long, GisLayer> getLayers() {return Collections.unmodifiableSortedMap(this.mapLayerId2Layer);
-	}
+	public SortedMap<Long, GisLayer> getLayers() { return Collections.unmodifiableSortedMap(this.mapLayerId2Layer); }
 
-	//getLayer con name
-	public GisLayer getLayer(Long id) {
-		return this.mapLayerId2Layer.get(id);
+	public Set<GisLayer> getLayersByName(String layerName) {
+		Set<GisLayer> gLSet = new TreeSet();
+		Iterator it = this.mapLayerId2Layer.keySet().iterator();
 
+		while (it.hasNext()) {
+			GisLayer gl = this.mapLayerId2Layer.get(it.next());
+			if (gl.getName().equals(layerName)) { gLSet.add(gl); }
+		}
+		return gLSet;
 	}
 	
-	//
-	public String getLayerNames(){
-		return this.mapLayerName2Layer.keySet().toString();
-	}
+	public GisLayer getLayer(Long id) { return this.mapLayerId2Layer.get(id); }
+	
+	public String getLayerName(Long id){ return this.mapLayerId2LayerName.get(id); }
+
+	public Collection<String> getLayerNames(){ return Collections.unmodifiableCollection(this.mapLayerId2LayerName.values()); }
 	
 	private void updateChilds() throws CloneNotSupportedException{
-		System.out.println("Updating childs");
 		Iterator<Long> it = this.mapLayerId2Layer.keySet().iterator();
 		while(it.hasNext()){
 			GisLayer gl = this.mapLayerId2Layer.get(it.next());
