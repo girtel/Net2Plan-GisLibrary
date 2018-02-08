@@ -89,19 +89,21 @@ public class GisObject implements Comparable <GisObject>
 	public Optional<String> getProperty (String propertyName){
 		return Optional.of(this.properties.get(propertyName));
 	}
-	
-	// TODO
-	public double getPropertyAsDouble (String propertyName , double defaultValue){
-		return 0;
+
+	public double getPropertyAsDouble(String propertyName, double defaultValue) {
+		try {
+			return Double.parseDouble(properties.get(propertyName));
+		} catch (Exception e) {
+			return defaultValue;
+		}
+
 	}
 
 	@Override
-	public int compareTo(GisObject o) {
-		final int cLayers = this.getLayer().compareTo (o.getLayer());
+	public int compareTo(GisObject object) {
+		final int cLayers = this.getGl().compareTo (object.getGl());
 		if (cLayers != 0) return cLayers;
-		 return Long.compare(this.getId () , o.getId ()); 
+		 return Long.compare(this.getId () , object.getId ()); 
 
-		// TODO Auto-generated method stub
-		return 0;
 	}
 }

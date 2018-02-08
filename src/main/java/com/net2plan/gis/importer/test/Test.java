@@ -15,6 +15,13 @@ import com.net2plan.gis.importer.GisLibrary.*;
 public class Test {
 
 	public static void main(String[] args) throws Throwable {
+		try{
+		System.out.println(Double.parseDouble("Hola"));
+		}catch(Exception e){
+			System.out.println("1234564789");
+		}
+		System.out.println(Double.valueOf("123.2"));
+		
 		List<GisMultilayer> gmlL = new ArrayList<GisMultilayer>();
 		GisMultilayer gml_C = new GisMultilayer("Cartagena");
 		GisMultilayer gml_L = new GisMultilayer("Lorca");
@@ -52,13 +59,13 @@ public class Test {
 			System.out.println("/////////////////////////////////////////////");
 			System.out.println("GML name: " + gml.getName());
 			System.out.println("Layer names del gml " + gml.getLayerNames());
-			Map<String, GisLayer> layers = gml.getLayers();
+			Map<Long, GisLayer> layers = gml.getLayers();
 
 			// Imprimimos el Map con un Iterador
-			Iterator<String> gl_iterator = layers.keySet().iterator();
+			Iterator<Long> gl_iterator = layers.keySet().iterator();
 			System.out.println("#/#/#/#/#/#/#/#/#/#/#/#/#/#/#/#/#/#/#/");
 			while (gl_iterator.hasNext()) { // 2
-				String key = gl_iterator.next();
+				Long key = gl_iterator.next();
 				System.out.println("#### " + key + " ####");
 				GisLayer gl = gml.getLayer(key);
 				Collection<GisObject> goc = gl.getObjects().values();
