@@ -43,6 +43,7 @@ public class GisLayer implements Comparable<GisLayer>
 	private GisConstants.GISLAYERTYPE setLayerType(String type){
 		if (type.equals("Polygon")){return GisConstants.GISLAYERTYPE.BUILDINGS;}
 		else if(type.equals("LineString")){return GisConstants.GISLAYERTYPE.ROADS;}
+		else if(type.equals("Point")){return GisConstants.GISLAYERTYPE.LUMINAIRES;}
 		else return GisConstants.GISLAYERTYPE.UNKNOWN;
 	}
 	
@@ -57,6 +58,8 @@ public class GisLayer implements Comparable<GisLayer>
 	public boolean isBuildingsLayer () { return typeOfObjectsInside == GisConstants.GISLAYERTYPE.BUILDINGS; }
 	
 	public boolean isRoadsLayer () { return typeOfObjectsInside == GisConstants.GISLAYERTYPE.ROADS; }
+	
+	public boolean isLuminairesLayer () { return typeOfObjectsInside == GisConstants.GISLAYERTYPE.LUMINAIRES; }
 
 	public String getName(){ return this.name;}
 	

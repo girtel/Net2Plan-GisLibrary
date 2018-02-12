@@ -23,7 +23,7 @@ public class GisObject implements Comparable <GisObject>
 	
 	//private final String idAccordingToGeoJsonFile;
 
-	public GisObject(GeoJSONParser.GeoJSONFeature object, GisLayer belongingLayer, long id /*, String idAccordingToGeoJsonFile , List<Point2D> track*/)
+	public GisObject(GeoJSONParser.GeoJSONFeature object, GisLayer belongingLayer, long id)
 	{
 		super();
 		this.gml = belongingLayer.getGml ();
@@ -66,7 +66,11 @@ public class GisObject implements Comparable <GisObject>
 				Point2D point2d = new Point2D.Double((double) point.get(0), (double) point.get(1));
 				track.add(point2d);
 			}
-		}
+		}else if(this.gl.isLuminairesLayer()){
+			List point = coordinatesList;
+			Point2D point2d = new Point2D.Double((double) point.get(0), (double) point.get(1));
+			track.add(point2d);
+			}
 		return track;
 	}
 

@@ -25,23 +25,26 @@ public class Test {
 		//GisImporter gi = new GisImporter();
 		List<File> files = new ArrayList<File>();
 		
-		File path = new File("C:/Users/jlrg_/Desktop/UPCT/QGIS/OSM2QGIS/Edificios.geojson");
-		File path1 = new File("C:/Users/jlrg_/Desktop/UPCT/QGIS/OSM2QGIS/Carreteras.geojson");
+		File Edificios = new File("C:/Users/jlrg_/Desktop/UPCT/QGIS/OSM2QGIS/Edificios.geojson");
+		File Carreteras = new File("C:/Users/jlrg_/Desktop/UPCT/QGIS/OSM2QGIS/Carreteras.geojson");
+		File Luminarias = new File("C:/Users/jlrg_/Desktop/UPCT/QGIS/OSM2QGIS/Luminarias.geojson");
 
 		// Cargamos un gml de prueba
-		files.add(path);
-		files.add(path);
+		files.add(Edificios);
+		files.add(Edificios);
 		//files.add(path1);
-		gml_C.buildFromGeoJson(files);
+		gml_C.buildFromGeoJson(gml_C, files);
 
 		// Cargamos otro gml de prueba
 		files.clear();
-		files.add(path1);
-		gml_L.buildFromGeoJson(files);
+		files.add(Carreteras);
+		files.add(Luminarias);
+		gml_L.buildFromGeoJson(gml_L, files);
 
 		ListIterator<GisMultilayer> gml_iterator = gmlL.listIterator();
 		while (gml_iterator.hasNext()) { // 1
 			GisMultilayer gml = gml_iterator.next();
+			
 			/*
 			System.out.println("CARGAR GL A MANO");
 			gml.addLayer(path1);
@@ -57,6 +60,13 @@ public class Test {
 			System.out.println("Buildings layers loaded: " + gml.getLayersByName("Edificios").size());
 			System.out.println("Roads layers loaded: " + gml.getLayersByName("Carreteras").size());
 			System.out.println("layer name from id=1 : " + gml.getLayerName(1L));
+			
+			/*GisLayer layer = gml.getLayers().get(1L);
+			System.out.println("Setting name to Totana...");
+			gml.setName("Totana");
+			System.out.println("GML name loaded from gml: "+gml.getName());
+			System.out.println("GML name loaded from layer 1: "+layer.getGml().getName());*/
+
 			Map<Long, GisLayer> layers = gml.getLayers();
 
 			// Imprimimos el Map con un Iterador
@@ -87,8 +97,14 @@ public class Test {
 						System.out.println("End point: " + go.getEndPoint());
 						counter++;
 					}
-
-					System.out.println("#/#/#/#/#/#/#/#/#/#/#/#/#/#/#/#/#/#/#/");
+				}else if (gl.isLuminairesLayer()) {
+					while (object_iterator.hasNext() && counter < 10) { // 3.2
+						Luminaire go = (Luminaire) object_iterator.next();
+						System.out.println("Object id: " + go.getId());
+						System.out.println("Coordinates: " + go.getGeoJSONFeatures().geometry.coordinates);
+						System.out.println("Point: " + go.getPoint());
+						counter++;
+					}
 				}
 
 				System.out.println("#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*");

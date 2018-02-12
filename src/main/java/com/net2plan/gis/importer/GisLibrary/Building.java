@@ -9,9 +9,9 @@ import com.net2plan.gis.importer.GisLibrary.*;
 public class Building extends GisObject
 {
 	
-	public Building(GeoJSONParser.GeoJSONFeature jlf, GisLayer belongingLayer, long id/*, String idAccordingToGeoJsonFile, List<Point2D> track*/)
+	public Building(GeoJSONParser.GeoJSONFeature geoJSONF, GisLayer belongingLayer, long id/*, String idAccordingToGeoJsonFile, List<Point2D> track*/)
 	{
-		super(jlf, belongingLayer, id/*, idAccordingToGeoJsonFile, track*/);
+		super(geoJSONF, belongingLayer, id/*, idAccordingToGeoJsonFile, track*/);
 		// TODO Auto-generated constructor stub
 	}
 	
