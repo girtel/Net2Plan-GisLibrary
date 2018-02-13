@@ -40,6 +40,7 @@ public class Test {
 		files.add(Carreteras);
 		files.add(Luminarias);
 		gml_L.buildFromGeoJson(gml_L, files);
+		
 
 		ListIterator<GisMultilayer> gml_iterator = gmlL.listIterator();
 		while (gml_iterator.hasNext()) { // 1
