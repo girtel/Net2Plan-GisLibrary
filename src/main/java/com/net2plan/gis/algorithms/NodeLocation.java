@@ -1,5 +1,5 @@
 
-package com.net2plan.gis.importer.GisLibrary;
+package com.net2plan.gis.algorithms;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -12,6 +12,11 @@ import java.util.Map;
 
 import com.jom.DoubleMatrixND;
 import com.jom.OptimizationProblem;
+import com.net2plan.gis.importer.GisLibrary.Building;
+import com.net2plan.gis.importer.GisLibrary.GisLayer;
+import com.net2plan.gis.importer.GisLibrary.GisMultilayer;
+import com.net2plan.gis.importer.GisLibrary.GisObject;
+import com.net2plan.gis.importer.GisLibrary.Luminaire;
 import com.net2plan.gui.plugins.networkDesign.topologyPane.TopologyPanel;
 import com.net2plan.interfaces.networkDesign.IAlgorithm;
 import com.net2plan.interfaces.networkDesign.Net2PlanException;
@@ -37,10 +42,10 @@ public class NodeLocation implements IAlgorithm
 	 * @return
 	 */
 	
-	List<Node> B = new ArrayList<Node>();	//Buildings
-	List<Node> L = new ArrayList<Node>();	//Luminaires
+	private List<Node> B = new ArrayList<>();	//Buildings
+	private List<Node> L = new ArrayList<>();	//Luminaires
 	
-	public void createTopology(NetPlan netPlan){
+	private void createTopology(NetPlan netPlan){
 		
 		/* remove topology */
 		netPlan.removeAllNetworkLayers();
@@ -77,7 +82,6 @@ public class NodeLocation implements IAlgorithm
 					//System.out.println("Added luminaire "+"Luminaire_"+String.valueOf(object.getId()));
 				}
 			}
-			
 		}
 		
 		for(Node l_node : L)
@@ -97,49 +101,34 @@ public class NodeLocation implements IAlgorithm
 	{
 		
 		createTopology(netPlan);
+		final BidiMap<Node,Integer> mapBuilding2Index = getAsBidiIndexMap (B);
+		final BidiMap<Node,Integer> mapLuminaire2Index = getAsBidiIndexMap (L);
+		
 		//netPlan.removeAllLinks();
 		
 		/* Typically, you start reading the input parameters */
 		final int Dmax = Integer.parseInt (algorithmParameters.get ("Dmax")); //Distancia m�xima de cobertura
-		final Double ALPHA = Double.parseDouble (algorithmParameters.get ("ALPHA")); //Factor 
-		final Double Z = Double.parseDouble (algorithmParameters.get ("Z")); //Coste de instalaci�n
-		final Double X = Double.parseDouble (algorithmParameters.get ("X")); //Mbps
-		
-
-		
+		final Double costPerBlockedMbps = Double.parseDouble (algorithmParameters.get ("costPerBlockedMbps")); //Factor 
+		final Double costPerPicoCell = Double.parseDouble (algorithmParameters.get ("costPerPicoCell")); //Mbps
+		final Double maxTrafficPerPicoCellMbps = Double.parseDouble (algorithmParameters.get ("maxTrafficPerPicoCellMbps")); //Mbps
 		///////////////////////////// 1 /////////////////////////////
 		/* Create the optimization object */
 		OptimizationProblem op = new OptimizationProblem();
 		
 		///////////////////////////// 2 /////////////////////////////
 		
-		int nB = B.size();	//number of buildings
-		int nL = L.size();	//number of luminaires
+		final int nB = B.size();	//number of buildings
+		final int nL = L.size();	//number of luminaires
 
 		//inicializar vector X_b de tama�o nB y con valores entre 0 y X.
-		double[] X_b = new double[nB];
-		for(Node b:B){
-			X_b[B.indexOf(b)] = 50; 
-		}
-
+		DoubleMatrix1D X_b = DoubleFactory1D.dense.make (nB , 50.0);
 		
-		final DoubleMatrix2D isInCoverageConstraintLimit = DoubleFactory2D.dense.make(nB , nL , X);
+		final DoubleMatrix2D isInCoverageConstraintLimit = DoubleFactory2D.dense.make(nB , nL , maxTrafficPerPicoCellMbps);
 		for(Node b:B) // recorro edificios
-		{
 			for(Node l:L) // recorro luminarias
-			{
-				//System.out.println(netPlan.getNodePairEuclideanDistance(b,l));
 				if(netPlan.getNodePairEuclideanDistance(b,l)> Dmax )
-				{
-					System.out.println(b.getName() +" is too far from "+ l.getName());
 					isInCoverageConstraintLimit.set(B.indexOf(b), L.indexOf(l), 0.0);
-				}
-			}
-		}
 
-		
-		
-		
 		/* Add the decision variables */
 		op.addDecisionVariable("x_bl" , false , new int [] {nB,nL} , new DoubleMatrixND (DoubleFactory2D.dense.make(nB , nL)) , new DoubleMatrixND (isInCoverageConstraintLimit)); 
 		op.addDecisionVariable("z_l" , true , new int [] {1,nL} , 0 , 1); 
@@ -148,26 +137,17 @@ public class NodeLocation implements IAlgorithm
 		/* Add the input parameters */
 		op.setInputParameter("Dmax" , Dmax);
 		op.setInputParameter("X_b", X_b, "row");
-		op.setInputParameter("ALPHA", ALPHA);
-		op.setInputParameter("Z", Z);
-		op.setInputParameter("X", X);
+		op.setInputParameter("costPerPicoCell", costPerPicoCell);
+		op.setInputParameter("costPerBlockedMbps", costPerBlockedMbps);
+		op.setInputParameter("maxTrafficPerPicoCellMbps", maxTrafficPerPicoCellMbps);
 										//               coste Mbps perdidos  + coste instalaci�n luminaria
-		op.setObjectiveFunction("minimize", "  ALPHA * (sum(X_b)-sum(x_bl,2)) + sum(z_l)"); 
+		op.setObjectiveFunction("minimize", "  costPerBlockedMbps * (sum(X_b - sum(x_bl,2)')) + costPerPicoCell * sum(z_l)"); 
 		//" ALPHA * Z * sum( X_b � sum(x_bl) ) + Z * sum(z_l)"
 		
 		///////////////////////////// 4 /////////////////////////////
-		for(Node b:B) // recorro edificios
-		{
-		op.setInputParameter("b", B.indexOf(b));
-		op.addConstraint("sum(x_bl (b,all)) <= X_b(b)");
-		}
-		
-		for(Node l:L) // recorro luminarias
-		{
-		op.setInputParameter("l", L.indexOf(l));
-		op.addConstraint("sum(x_bl (all,l)) <= X*z_l(l)");
-		}
-		
+		op.addConstraint("sum(x_bl,2) <= X_b'");
+		op.addConstraint("sum(x_bl,1) <= maxTrafficPerPicoCellMbps * z_l");
+
 		/* Call the solver to solve the problem */
 		op.solve("cplex");
 		if (!op.solutionIsOptimal()) throw new Net2PlanException ("The solution is not optimal");
@@ -181,10 +161,36 @@ public class NodeLocation implements IAlgorithm
 				
 		/* Save the access-to-node links in the design (links are not bidirectional) */
 		for (Node b : B) 
+		{
+			final int buildingIndex = mapBuilding2Index.get(b);
 			for (Node l : L)
-				if ((z_l[L.indexOf(l)]==1) && (x_bl[B.indexOf(b)][L.indexOf(l)] > 0))
-					netPlan.addLink(b, l, 1, netPlan.getNodePairEuclideanDistance(b,l) , 200000 , null);
-
+			{
+				final int luminaireIndex = mapLuminaire2Index.get(l);
+				if ((z_l[luminaireIndex]==1) && (x_bl[buildingIndex][luminaireIndex] > 0))
+				{
+					netPlan.addLink(b, l, x_bl[buildingIndex][luminaireIndex], netPlan.getNodePairEuclideanDistance(b,l) , 200000 , null);
+					l.addTag ("HASPICOCELL");
+				}
+			}
+		}
+		
+		/* checks */
+		for (Node b : B) 
+		{
+			b.getOutgoingLinks ()--> sumo para todos ellos la capacidad, y debe ser menor o igual que el trafico ofrecido por el building
+			b.incomingLinks debe estar vacio
+		}
+		for (Node l : L) 
+		{
+			l.getIncomginLink ()--> si esta vacio el l no puede tener la tag HASPICOCELL
+			l.getIncomginLink ()--> si no esta vacio el l debe tener la tag HASPICOCELL
+			l.getIncomginLink ()--> si no esta vacio, la suma de las capacidaddes de los enlaces entrantes debe ser menor o igual a la capacidad de la picocell
+			l.outgoingLink debe estar vacio
+		}
+		
+		op.addConstraint("sum(x_bl,2) <= X_b'");
+		op.addConstraint("sum(x_bl,1) <= maxTrafficPerPicoCellMbps * z_l");
+		
 		/* Compute the total number of core nodes */
 		//int numCoreNodes = 0; for (int n = 0; n < N ; n ++) numCoreNodes += z_j [n];
 
@@ -208,11 +214,12 @@ public class NodeLocation implements IAlgorithm
 	public List<Triple<String, String, String>> getParameters()
 	{
 		final List<Triple<String, String, String>> param = new LinkedList<Triple<String, String, String>> ();
-		param.add (Triple.of ("Dmax" , "50" , "Max coverage distance"));
-		param.add (Triple.of ("ALPHA" , "0.01" , ""));
-		param.add (Triple.of ("Z" , "100" , "Installation Cost"));
-		param.add (Triple.of ("X" , "200" , "Max Mbps offered by each antenna"));
-
+		param.add (Triple.of ("Dmax" , "50" , "Max coverage distance in m"));
+		param.add (Triple.of ("costPerBlockedMbps" , "0.01" , "Virtual cost per Mbps of not covering a users traffic with picocells"));
+		param.add (Triple.of ("maxTrafficPerPicoCellMbps" , "200" , "Max Mbps offered by each antenna"));
+		param.add (Triple.of ("costPerPicoCell" , "20" , "Max Mbps offered by each antenna"));
+		
+		
 		return param;
 	}
 	
@@ -232,5 +239,13 @@ public class NodeLocation implements IAlgorithm
 	        }
 
 	    }catch(Exception e){System.out.println("Matrix is empty!!");}
+	}
+
+	private static <S> BidiMap<S,Integer> getAsBidiIndexMap (List<S> list)
+	{
+		final BidiMap<S,Integer> res = new DualHashBidiMap<> ();
+		for (S element : list)
+			res.put (element , res.size ());
+		return res;
 	}
 }
