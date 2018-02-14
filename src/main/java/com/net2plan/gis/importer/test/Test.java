@@ -25,9 +25,9 @@ public class Test {
 		//GisImporter gi = new GisImporter();
 		List<File> files = new ArrayList<File>();
 		
-		File Edificios = new File("C:/Users/jlrg_/Desktop/UPCT/QGIS/OSM2QGIS/Edificios.geojson");
+		File Edificios = new File("C:/Users/jlrg_/Desktop/UPCT/QGIS/OSM2QGIS/E1.geojson");
 		File Carreteras = new File("C:/Users/jlrg_/Desktop/UPCT/QGIS/OSM2QGIS/Carreteras.geojson");
-		File Luminarias = new File("C:/Users/jlrg_/Desktop/UPCT/QGIS/OSM2QGIS/Luminarias.geojson");
+		File Luminarias = new File("C:/Users/jlrg_/Desktop/UPCT/QGIS/OSM2QGIS/L1.geojson");
 
 		// Cargamos un gml de prueba
 		files.add(Edificios);
