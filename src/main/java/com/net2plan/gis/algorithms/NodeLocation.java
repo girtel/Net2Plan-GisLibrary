@@ -10,6 +10,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.collections4.BidiMap;
+import org.apache.commons.collections4.bidimap.DualHashBidiMap;
+
 import com.jom.DoubleMatrixND;
 import com.jom.OptimizationProblem;
 import com.net2plan.gis.importer.GisLibrary.Building;
@@ -17,14 +20,17 @@ import com.net2plan.gis.importer.GisLibrary.GisLayer;
 import com.net2plan.gis.importer.GisLibrary.GisMultilayer;
 import com.net2plan.gis.importer.GisLibrary.GisObject;
 import com.net2plan.gis.importer.GisLibrary.Luminaire;
-import com.net2plan.gui.plugins.networkDesign.topologyPane.TopologyPanel;
+
+//import com.net2plan.gui.plugins.networkDesign.topologyPane.TopologyPanel;
 import com.net2plan.interfaces.networkDesign.IAlgorithm;
 import com.net2plan.interfaces.networkDesign.Net2PlanException;
 import com.net2plan.interfaces.networkDesign.NetPlan;
 import com.net2plan.interfaces.networkDesign.Node;
 import com.net2plan.utils.Triple;
 
+import cern.colt.matrix.tdouble.DoubleFactory1D;
 import cern.colt.matrix.tdouble.DoubleFactory2D;
+import cern.colt.matrix.tdouble.DoubleMatrix1D;
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
 
 
@@ -84,14 +90,14 @@ public class NodeLocation implements IAlgorithm
 			}
 		}
 		
-		for(Node l_node : L)
+		/*for(Node l_node : L)
 		{
 			l_node.setUrlNodeIcon(netPlan.getNetworkLayerDefault(), TopologyPanel.class.getResource("/resources/gui/figs/BaseStation.png"));
 		}
 		for(Node b_node : B)
 		{
 			b_node.setUrlNodeIcon(netPlan.getNetworkLayerDefault(), TopologyPanel.class.getResource("/resources/gui/figs/Building.png"));
-		}
+		}*/
 		
 	}
 	
@@ -154,7 +160,7 @@ public class NodeLocation implements IAlgorithm
 		/* Retrieve the optimal solution found */
 		final double [] z_l = op.getPrimalSolution("z_l").to1DArray();
 		final double [][] x_bl = (double [][]) op.getPrimalSolution("x_bl").toArray();
-		System.out.println("Building demanded traffic: "+Arrays.toString(X_b));
+		System.out.println("Building demanded traffic: "+X_b.toString());
 		System.out.println("Luminaries offered traffic: "+Arrays.toString(z_l));
 		System.out.println("X is buildings, Y is luminaries");
 		printMatrix(x_bl);
@@ -174,7 +180,7 @@ public class NodeLocation implements IAlgorithm
 			}
 		}
 		
-		/* checks */
+		/* checks 
 		for (Node b : B) 
 		{
 			b.getOutgoingLinks ()--> sumo para todos ellos la capacidad, y debe ser menor o igual que el trafico ofrecido por el building
@@ -186,7 +192,7 @@ public class NodeLocation implements IAlgorithm
 			l.getIncomginLink ()--> si no esta vacio el l debe tener la tag HASPICOCELL
 			l.getIncomginLink ()--> si no esta vacio, la suma de las capacidaddes de los enlaces entrantes debe ser menor o igual a la capacidad de la picocell
 			l.outgoingLink debe estar vacio
-		}
+		}*/
 		
 		op.addConstraint("sum(x_bl,2) <= X_b'");
 		op.addConstraint("sum(x_bl,1) <= maxTrafficPerPicoCellMbps * z_l");
