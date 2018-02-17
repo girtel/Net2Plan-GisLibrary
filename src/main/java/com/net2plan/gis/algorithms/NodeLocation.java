@@ -169,7 +169,7 @@ public class NodeLocation implements IAlgorithm
 		System.out.println("Building demanded traffic: "+X_b.toString());
 		System.out.println("Luminaries offered traffic: "+Arrays.toString(z_l));
 		System.out.println("X is buildings, Y is luminaries");
-		printMatrix(x_bl);
+		//printMatrix(x_bl);
 				
 		/* Save the access-to-node links in the design (links are not bidirectional) */
 		for (Node b : B) 
