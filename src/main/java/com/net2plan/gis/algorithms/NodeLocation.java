@@ -54,14 +54,14 @@ public class NodeLocation implements IAlgorithm
 	private void createTopology(NetPlan netPlan){
 		
 		/* remove topology */
-		netPlan.removeAllNetworkLayers();
+		//netPlan.removeAllNetworkLayers();
 		netPlan.removeAllNodes();
-		netPlan.removeAllLinks();
+		//netPlan.removeAllLinks();
 		
 		GisMultilayer gml_C = new GisMultilayer("Cartagena");
 		List<File> files = new ArrayList<File>();
-		File Edificios = new File("C:/Users/jlrg_/Desktop/UPCT/QGIS/OSM2QGIS/E2.geojson");
-		File Luminarias = new File("C:/Users/jlrg_/Desktop/UPCT/QGIS/OSM2QGIS/L1.geojson");
+		File Edificios = new File("C:/Users/jlrg_/Desktop/UPCT/QGIS/OSM2QGIS/Edificios.geojson");
+		File Luminarias = new File("C:/Users/jlrg_/Desktop/UPCT/QGIS/OSM2QGIS/Luminarias.geojson");
 		files.add(Edificios);
 		files.add(Luminarias);
 		try {
@@ -113,7 +113,8 @@ public class NodeLocation implements IAlgorithm
 		//netPlan.removeAllLinks();
 		
 		/* Typically, you start reading the input parameters */
-		final int Dmax = Integer.parseInt (algorithmParameters.get ("Dmax")); //Distancia m�xima de cobertura
+		final Double Dmax = Double.parseDouble (algorithmParameters.get ("Dmax"))/1000; //Max distance in m
+		//System.out.println(Dmax);
 		final Double costPerBlockedMbps = Double.parseDouble (algorithmParameters.get ("costPerBlockedMbps")); //Factor 
 		final Double costPerPicoCell = Double.parseDouble (algorithmParameters.get ("costPerPicoCell")); //Mbps
 		final Double maxTrafficPerPicoCellMbps = Double.parseDouble (algorithmParameters.get ("maxTrafficPerPicoCellMbps")); //Mbps
@@ -130,10 +131,16 @@ public class NodeLocation implements IAlgorithm
 		DoubleMatrix1D X_b = DoubleFactory1D.dense.make (nB , 50.0);
 		
 		final DoubleMatrix2D isInCoverageConstraintLimit = DoubleFactory2D.dense.make(nB , nL , maxTrafficPerPicoCellMbps);
-		for(Node b:B) // recorro edificios
-			for(Node l:L) // recorro luminarias
-				if(netPlan.getNodePairEuclideanDistance(b,l)> Dmax )
-					isInCoverageConstraintLimit.set(B.indexOf(b), L.indexOf(l), 0.0);
+		for(Node b:B){
+			for(Node l:L){
+				//System.out.println(netPlan.getNodePairEuclideanDistance(b,l));
+				if(netPlan.getNodePairEuclideanDistance(b,l)> Dmax ){
+					final int buildingIndex = mapBuilding2Index.get(b);
+					final int luminaireIndex = mapLuminaire2Index.get(l);
+					isInCoverageConstraintLimit.set(buildingIndex, luminaireIndex, 0.0);
+				}
+			}
+		}
 
 		/* Add the decision variables */
 		op.addDecisionVariable("x_bl" , false , new int [] {nB,nL} , new DoubleMatrixND (DoubleFactory2D.dense.make(nB , nL)) , new DoubleMatrixND (isInCoverageConstraintLimit)); 
@@ -150,7 +157,6 @@ public class NodeLocation implements IAlgorithm
 		op.setObjectiveFunction("minimize", "  costPerBlockedMbps * (sum(X_b - sum(x_bl,2)')) + costPerPicoCell * sum(z_l)"); 
 		//" ALPHA * Z * sum( X_b � sum(x_bl) ) + Z * sum(z_l)"
 		
-		///////////////////////////// 4 /////////////////////////////
 		op.addConstraint("sum(x_bl,2) <= X_b'");
 		op.addConstraint("sum(x_bl,1) <= maxTrafficPerPicoCellMbps * z_l");
 
@@ -180,26 +186,42 @@ public class NodeLocation implements IAlgorithm
 			}
 		}
 		
-		/* checks 
+		/* checks */
 		for (Node b : B) 
 		{
-			b.getOutgoingLinks ()--> sumo para todos ellos la capacidad, y debe ser menor o igual que el trafico ofrecido por el building
-			b.incomingLinks debe estar vacio
+			final int buildingIndex = mapBuilding2Index.get(b);
+			if(b.getIncomingLinksAllLayers().isEmpty()){
+				// keep checking
+				if(b.getOutgoingLinksTraffic() > X_b.get(buildingIndex)){ break; }
+			}else{ break; }
+
+			//b.getOutgoingLinks ()--> sumo para todos ellos la capacidad, y debe ser menor o igual que el trafico ofrecido por el building
+			//b.incomingLinks debe estar vacio
 		}
-		for (Node l : L) 
-		{
-			l.getIncomginLink ()--> si esta vacio el l no puede tener la tag HASPICOCELL
-			l.getIncomginLink ()--> si no esta vacio el l debe tener la tag HASPICOCELL
-			l.getIncomginLink ()--> si no esta vacio, la suma de las capacidaddes de los enlaces entrantes debe ser menor o igual a la capacidad de la picocell
-			l.outgoingLink debe estar vacio
-		}*/
+		
+		for (Node l : L) {
+			if (l.getOutgoingLinksAllLayers().isEmpty()) {
+				// keep checking
+				if (l.getIncomingLinksAllLayers().isEmpty()) {
+					if (l.hasTag("HASPICOCELL")) { break; }
+				} else {
+					if (!l.hasTag("HASPICOCELL")) { break; }
+					if (l.getIncomingLinksTraffic() > maxTrafficPerPicoCellMbps) { break; }
+				}
+			} else { break; }
+
+			// l.getIncomginLink ()--> si esta vacio el l no puede tener la tag
+			// HASPICOCELL
+			// l.getIncomginLink ()--> si no esta vacio el l debe tener la tag
+			// HASPICOCELL
+			// l.getIncomginLink ()--> si no esta vacio, la suma de las
+			// capacidaddes de los enlaces entrantes debe ser menor o igual a la
+			// capacidad de la picocell
+			// l.outgoingLink debe estar vacio
+		}
 		
 		op.addConstraint("sum(x_bl,2) <= X_b'");
 		op.addConstraint("sum(x_bl,1) <= maxTrafficPerPicoCellMbps * z_l");
-		
-		/* Compute the total number of core nodes */
-		//int numCoreNodes = 0; for (int n = 0; n < N ; n ++) numCoreNodes += z_j [n];
-
 
 		return "Ok! total cost: " + op.getOptimalCost(); 
 	}
@@ -221,9 +243,9 @@ public class NodeLocation implements IAlgorithm
 	{
 		final List<Triple<String, String, String>> param = new LinkedList<Triple<String, String, String>> ();
 		param.add (Triple.of ("Dmax" , "50" , "Max coverage distance in m"));
-		param.add (Triple.of ("costPerBlockedMbps" , "0.01" , "Virtual cost per Mbps of not covering a users traffic with picocells"));
-		param.add (Triple.of ("maxTrafficPerPicoCellMbps" , "200" , "Max Mbps offered by each antenna"));
-		param.add (Triple.of ("costPerPicoCell" , "20" , "Max Mbps offered by each antenna"));
+		param.add (Triple.of ("costPerBlockedMbps" , "80" , "Virtual cost per Mbps of not covering a users traffic with picocells"));
+		param.add (Triple.of ("maxTrafficPerPicoCellMbps" , "100" , "Max Mbps offered by each antenna"));
+		param.add (Triple.of ("costPerPicoCell" , "100" , "Cost per installing each Pico Cell"));
 		
 		
 		return param;
