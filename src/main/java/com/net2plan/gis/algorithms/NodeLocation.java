@@ -54,9 +54,9 @@ public class NodeLocation implements IAlgorithm
 	private void createTopology(NetPlan netPlan){
 		
 		/* remove topology */
-		//netPlan.removeAllNetworkLayers();
+		netPlan.removeAllNetworkLayers();
 		netPlan.removeAllNodes();
-		//netPlan.removeAllLinks();
+		netPlan.removeAllLinks();
 		
 		GisMultilayer gml_C = new GisMultilayer("Cartagena");
 		List<File> files = new ArrayList<File>();
@@ -110,26 +110,22 @@ public class NodeLocation implements IAlgorithm
 		final BidiMap<Node,Integer> mapBuilding2Index = getAsBidiIndexMap (B);
 		final BidiMap<Node,Integer> mapLuminaire2Index = getAsBidiIndexMap (L);
 		
-		//netPlan.removeAllLinks();
-		
 		/* Typically, you start reading the input parameters */
 		final Double Dmax = Double.parseDouble (algorithmParameters.get ("Dmax"))/1000; //Max distance in m
-		//System.out.println(Dmax);
 		final Double costPerBlockedMbps = Double.parseDouble (algorithmParameters.get ("costPerBlockedMbps")); //Factor 
 		final Double costPerPicoCell = Double.parseDouble (algorithmParameters.get ("costPerPicoCell")); //Mbps
 		final Double maxTrafficPerPicoCellMbps = Double.parseDouble (algorithmParameters.get ("maxTrafficPerPicoCellMbps")); //Mbps
-		///////////////////////////// 1 /////////////////////////////
+
 		/* Create the optimization object */
 		OptimizationProblem op = new OptimizationProblem();
-		
-		///////////////////////////// 2 /////////////////////////////
 		
 		final int nB = B.size();	//number of buildings
 		final int nL = L.size();	//number of luminaires
 
-		//inicializar vector X_b de tama�o nB y con valores entre 0 y X.
+		/* Initialize an array with the demanded traffic for each building */
 		DoubleMatrix1D X_b = DoubleFactory1D.dense.make (nB , 50.0);
 		
+		/* TO-DO */
 		final DoubleMatrix2D isInCoverageConstraintLimit = DoubleFactory2D.dense.make(nB , nL , maxTrafficPerPicoCellMbps);
 		for(Node b:B){
 			for(Node l:L){
@@ -143,34 +139,37 @@ public class NodeLocation implements IAlgorithm
 		}
 
 		/* Add the decision variables */
-		op.addDecisionVariable("x_bl" , false , new int [] {nB,nL} , new DoubleMatrixND (DoubleFactory2D.dense.make(nB , nL)) , new DoubleMatrixND (isInCoverageConstraintLimit)); 
+		//op.addDecisionVariable("x_bl" , false , new int [] {nB,nL} , new DoubleMatrixND (DoubleFactory2D.dense.make(nB , nL)) , new DoubleMatrixND (isInCoverageConstraintLimit)); 
+		op.addDecisionVariable("x_e" , true , new int [] {1,nB*nL} , 0 , maxTrafficPerPicoCellMbps);
+		op.addDecisionVariable("z_eb" , true , new int [] {nB*nL,nB} , 0 , 1);
+		op.addDecisionVariable("z_el" , true , new int [] {nB*nL, nL} , 0 , 1);
 		op.addDecisionVariable("z_l" , true , new int [] {1,nL} , 0 , 1); 
 		
-		///////////////////////////// 3 /////////////////////////////
 		/* Add the input parameters */
 		op.setInputParameter("Dmax" , Dmax);
 		op.setInputParameter("X_b", X_b, "row");
 		op.setInputParameter("costPerPicoCell", costPerPicoCell);
 		op.setInputParameter("costPerBlockedMbps", costPerBlockedMbps);
 		op.setInputParameter("maxTrafficPerPicoCellMbps", maxTrafficPerPicoCellMbps);
-										//               coste Mbps perdidos  + coste instalaci�n luminaria
-		op.setObjectiveFunction("minimize", "  costPerBlockedMbps * (sum(X_b - sum(x_bl,2)')) + costPerPicoCell * sum(z_l)"); 
-		//" ALPHA * Z * sum( X_b � sum(x_bl) ) + Z * sum(z_l)"
 		
-		op.addConstraint("sum(x_bl,2) <= X_b'");
-		op.addConstraint("sum(x_bl,1) <= maxTrafficPerPicoCellMbps * z_l");
+		/* Add the Objective Function */
+		op.setObjectiveFunction("minimize", "  costPerBlockedMbps * (sum(X_b - (x_e * z_eb ) )) + costPerPicoCell * sum(z_l)"); 
+		
+		/* Add the contraints */
+		op.addConstraint("x_e * z_eb <= X_b");
+		op.addConstraint("x_e * z_el <= maxTrafficPerPicoCellMbps * z_l");
 
 		/* Call the solver to solve the problem */
-		op.solve("cplex");
+		op.solve("cplex", "maxSolverTimeInSeconds" , 60);
 		if (!op.solutionIsOptimal()) throw new Net2PlanException ("The solution is not optimal");
+		
+		
+		/* TO-DO */
 		/* Retrieve the optimal solution found */
 		final double [] z_l = op.getPrimalSolution("z_l").to1DArray();
 		final double [][] x_bl = (double [][]) op.getPrimalSolution("x_bl").toArray();
-		System.out.println("Building demanded traffic: "+X_b.toString());
-		System.out.println("Luminaries offered traffic: "+Arrays.toString(z_l));
-		System.out.println("X is buildings, Y is luminaries");
-		//printMatrix(x_bl);
 				
+		/* TO-DO */
 		/* Save the access-to-node links in the design (links are not bidirectional) */
 		for (Node b : B) 
 		{
@@ -190,38 +189,25 @@ public class NodeLocation implements IAlgorithm
 		for (Node b : B) 
 		{
 			final int buildingIndex = mapBuilding2Index.get(b);
-			if(b.getIncomingLinksAllLayers().isEmpty()){
-				// keep checking
-				if(b.getOutgoingLinksTraffic() > X_b.get(buildingIndex)){ break; }
-			}else{ break; }
-
-			//b.getOutgoingLinks ()--> sumo para todos ellos la capacidad, y debe ser menor o igual que el trafico ofrecido por el building
-			//b.incomingLinks debe estar vacio
+			if(b.getIncomingLinksAllLayers().isEmpty()){ /* Has the building incoming links? */
+				if(b.getOutgoingLinksTraffic() > X_b.get(buildingIndex)){ /* Exceeds the building the maximum traffic limit? */
+					throw new Net2PlanException ("The outgoing traffic in a building exceeds the maximum limit."); }
+			}else{ throw new Net2PlanException ("The buildings has one or more incoming links."); }
 		}
 		
 		for (Node l : L) {
-			if (l.getOutgoingLinksAllLayers().isEmpty()) {
-				// keep checking
-				if (l.getIncomingLinksAllLayers().isEmpty()) {
-					if (l.hasTag("HASPICOCELL")) { break; }
-				} else {
-					if (!l.hasTag("HASPICOCELL")) { break; }
-					if (l.getIncomingLinksTraffic() > maxTrafficPerPicoCellMbps) { break; }
+			if (l.getOutgoingLinksAllLayers().isEmpty()) { /* Has the luminaire outgoing links? */
+				if (l.getIncomingLinksAllLayers().isEmpty()) { /* if the luminaire does not have incoming layers... */
+					if (l.hasTag("HASPICOCELL")) { /* ... it must not have the "HASPICOCELL" tag */
+						throw new Net2PlanException ("The luminaire is not tagged correctly. It must not have the \"HASPICOCELL\" tag."); }
+				} else { /* else the luminaire has incoming links... */
+					if (!l.hasTag("HASPICOCELL")) { /* ... it must have the tag.*/
+						throw new Net2PlanException ("The luminaire is not tagged correctly. It must have the \"HASPICOCELL\" tag.");}
+					if (l.getIncomingLinksTraffic() > maxTrafficPerPicoCellMbps) { /* Exceeds the luminaire the maximum traffic limit? */
+						throw new Net2PlanException ("The luminaire exceeds the maximum traffic limit.");}
 				}
-			} else { break; }
-
-			// l.getIncomginLink ()--> si esta vacio el l no puede tener la tag
-			// HASPICOCELL
-			// l.getIncomginLink ()--> si no esta vacio el l debe tener la tag
-			// HASPICOCELL
-			// l.getIncomginLink ()--> si no esta vacio, la suma de las
-			// capacidaddes de los enlaces entrantes debe ser menor o igual a la
-			// capacidad de la picocell
-			// l.outgoingLink debe estar vacio
+			} else { throw new Net2PlanException ("A luminaire has one or more outgoing links."); }
 		}
-		
-		op.addConstraint("sum(x_bl,2) <= X_b'");
-		op.addConstraint("sum(x_bl,1) <= maxTrafficPerPicoCellMbps * z_l");
 
 		return "Ok! total cost: " + op.getOptimalCost(); 
 	}

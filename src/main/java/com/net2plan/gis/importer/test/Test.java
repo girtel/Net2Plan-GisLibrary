@@ -12,6 +12,9 @@ import java.util.ListIterator;
 import java.util.Map;
 import com.net2plan.gis.importer.GisLibrary.*;
 
+import cern.colt.matrix.DoubleFactory2D;
+import cern.colt.matrix.DoubleMatrix2D;
+
 public class Test {
 
 	public static void main(String[] args) throws Throwable {
