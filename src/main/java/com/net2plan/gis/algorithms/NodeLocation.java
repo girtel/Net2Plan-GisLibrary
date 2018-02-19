@@ -60,8 +60,8 @@ public class NodeLocation implements IAlgorithm
 		
 		GisMultilayer gml_C = new GisMultilayer("Cartagena");
 		List<File> files = new ArrayList<File>();
-		File Edificios = new File("C:/Users/jlrg_/Desktop/UPCT/QGIS/OSM2QGIS/Edificios.geojson");
-		File Luminarias = new File("C:/Users/jlrg_/Desktop/UPCT/QGIS/OSM2QGIS/Luminarias.geojson");
+		File Edificios = new File("C:/Users/jlrg_/Desktop/UPCT/QGIS/OSM2QGIS/EdificiosCiudad.geojson");
+		File Luminarias = new File("C:/Users/jlrg_/Desktop/UPCT/QGIS/OSM2QGIS/LuminariasCiudad.geojson");
 		files.add(Edificios);
 		files.add(Luminarias);
 		try {
@@ -121,33 +121,36 @@ public class NodeLocation implements IAlgorithm
 		
 		final int nB = B.size();	//number of buildings
 		final int nL = L.size();	//number of luminaires
+		System.out.println("Number of buildings: "+nB);
+		System.out.println("Number of luminaires: "+nL);
 
 		/* Initialize an array with the demanded traffic for each building */
 		DoubleMatrix1D X_b = DoubleFactory1D.dense.make (nB , 50.0);
 		
-		/* TO-DO */
-		final DoubleMatrix2D isInCoverageConstraintLimit = DoubleFactory2D.dense.make(nB , nL , maxTrafficPerPicoCellMbps);
+		final DoubleMatrix2D z_eb = DoubleFactory2D.sparse.make(nB*nL,nB); //nB*nL is the total number of couples
+		final DoubleMatrix2D z_el = DoubleFactory2D.sparse.make(nB*nL,nL);
+		int e=0;
 		for(Node b:B){
 			for(Node l:L){
-				//System.out.println(netPlan.getNodePairEuclideanDistance(b,l));
-				if(netPlan.getNodePairEuclideanDistance(b,l)> Dmax ){
+				if(netPlan.getNodePairEuclideanDistance(b,l)< Dmax ){
 					final int buildingIndex = mapBuilding2Index.get(b);
 					final int luminaireIndex = mapLuminaire2Index.get(l);
-					isInCoverageConstraintLimit.set(buildingIndex, luminaireIndex, 0.0);
+					z_eb.set(e, buildingIndex, 1.0);
+					z_el.set(e, luminaireIndex, 1.0);					
 				}
+				e++;
 			}
 		}
 
 		/* Add the decision variables */
-		//op.addDecisionVariable("x_bl" , false , new int [] {nB,nL} , new DoubleMatrixND (DoubleFactory2D.dense.make(nB , nL)) , new DoubleMatrixND (isInCoverageConstraintLimit)); 
 		op.addDecisionVariable("x_e" , true , new int [] {1,nB*nL} , 0 , maxTrafficPerPicoCellMbps);
-		op.addDecisionVariable("z_eb" , true , new int [] {nB*nL,nB} , 0 , 1);
-		op.addDecisionVariable("z_el" , true , new int [] {nB*nL, nL} , 0 , 1);
 		op.addDecisionVariable("z_l" , true , new int [] {1,nL} , 0 , 1); 
 		
 		/* Add the input parameters */
 		op.setInputParameter("Dmax" , Dmax);
 		op.setInputParameter("X_b", X_b, "row");
+		op.setInputParameter("z_eb", z_eb);
+		op.setInputParameter("z_el", z_el);
 		op.setInputParameter("costPerPicoCell", costPerPicoCell);
 		op.setInputParameter("costPerBlockedMbps", costPerBlockedMbps);
 		op.setInputParameter("maxTrafficPerPicoCellMbps", maxTrafficPerPicoCellMbps);
@@ -166,22 +169,29 @@ public class NodeLocation implements IAlgorithm
 		
 		/* TO-DO */
 		/* Retrieve the optimal solution found */
+		//x_e
+		//z_l
 		final double [] z_l = op.getPrimalSolution("z_l").to1DArray();
-		final double [][] x_bl = (double [][]) op.getPrimalSolution("x_bl").toArray();
+		final double [] x_e = op.getPrimalSolution("x_e").to1DArray();
 				
 		/* TO-DO */
 		/* Save the access-to-node links in the design (links are not bidirectional) */
+		e=0;
 		for (Node b : B) 
 		{
 			final int buildingIndex = mapBuilding2Index.get(b);
 			for (Node l : L)
 			{
 				final int luminaireIndex = mapLuminaire2Index.get(l);
-				if ((z_l[luminaireIndex]==1) && (x_bl[buildingIndex][luminaireIndex] > 0))
+				
+				if ((z_l[luminaireIndex]==1) && (x_e[e] > 0))
 				{
-					netPlan.addLink(b, l, x_bl[buildingIndex][luminaireIndex], netPlan.getNodePairEuclideanDistance(b,l) , 200000 , null);
-					l.addTag ("HASPICOCELL");
+					if( z_eb.get(e, buildingIndex)==1.0 && z_el.get(e, luminaireIndex)==1.0){
+						netPlan.addLink(b, l, x_e[e], netPlan.getNodePairEuclideanDistance(b,l) , 200000 , null);
+						l.addTag ("HASPICOCELL");
+					}
 				}
+			e++;
 			}
 		}
 		
