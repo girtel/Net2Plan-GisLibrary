@@ -26,6 +26,7 @@ import com.net2plan.interfaces.networkDesign.IAlgorithm;
 import com.net2plan.interfaces.networkDesign.Net2PlanException;
 import com.net2plan.interfaces.networkDesign.NetPlan;
 import com.net2plan.interfaces.networkDesign.Node;
+import com.net2plan.utils.Pair;
 import com.net2plan.utils.Triple;
 
 import cern.colt.matrix.tdouble.DoubleFactory1D;
@@ -109,6 +110,7 @@ public class NodeLocation implements IAlgorithm
 		createTopology(netPlan);
 		final BidiMap<Node,Integer> mapBuilding2Index = getAsBidiIndexMap (B);
 		final BidiMap<Node,Integer> mapLuminaire2Index = getAsBidiIndexMap (L);
+		final BidiMap<Pair<Node,Node>,Integer> mapLink2Index = new DualHashBidiMap<> ();
 		
 		
 		/* Typically, you start reading the input parameters */
@@ -117,31 +119,36 @@ public class NodeLocation implements IAlgorithm
 		final Double costPerPicoCell = Double.parseDouble (algorithmParameters.get ("costPerPicoCell")); //Mbps
 		final Double maxTrafficPerPicoCellMbps = Double.parseDouble (algorithmParameters.get ("maxTrafficPerPicoCellMbps")); //Mbps
 
-		/* Compute the set of links */
-		final BidiMap<Pair<Node,Node>,Integer> mapLink2Index = new DualHashBidiMap<> ();
-		final DoubleMatrix2D z_eb = DoubleFactory2D.sparse.make(E,nB); //nB*nL is the total number of couples
-		final DoubleMatrix2D z_el = DoubleFactory2D.sparse.make(E,nL);
-		for (Node b : B)
-			for (Node l : L)
-				if (netPlan.getNodePairEuclideanDistance (b,l) <= Dmax)
-				{
-					final int e = mapLink2Index.size ();
-					mapLink2Index.put (Pair.of (b,l) , e);
-					z_eb.set (e , mapBuilding2Index.get(b));
-					z_el.set (e , mapLuminaire2Index.get(l));
-				}
+
 		
 		final int E = mapLink2Index.size ();
 		final int nB = B.size();	//number of buildings
 		final int nL = L.size();	//number of luminaires
 		System.out.println("Number of buildings: "+nB);
 		System.out.println("Number of luminaires: "+nL);
-
+		
+		/* Compute the set of links */
+		final DoubleMatrix2D z_eb = DoubleFactory2D.sparse.make(E,nB); //nB*nL is the total number of couples
+		final DoubleMatrix2D z_el = DoubleFactory2D.sparse.make(E,nL);
+		for (Node b : B){
+			final int buildingIndex = mapBuilding2Index.get(b);
+			for (Node l : L){
+				final int luminaireIndex = mapLuminaire2Index.get(l);
+				if (netPlan.getNodePairEuclideanDistance (b,l) <= Dmax)
+				{
+					final int e = mapLink2Index.size();
+					mapLink2Index.put (Pair.of (b,l) , e);
+					z_eb.set (e , buildingIndex, 1.0);
+					z_el.set (e , luminaireIndex, 1.0);
+				}
+			}
+		}
+		
+		DoubleMatrix1D X_b = DoubleFactory1D.dense.make (nB , 50.0);
+		
 		/* Initialize an array with the demanded traffic for each building */
 		/* Create the optimization object */
 		OptimizationProblem op = new OptimizationProblem();
-		
-		DoubleMatrix1D X_b = DoubleFactory1D.dense.make (nB , 50.0);
 		
 		/* Add the decision variables */
 		op.addDecisionVariable("x_e" , false , new int [] {1,E} , 0 , maxTrafficPerPicoCellMbps);
@@ -174,28 +181,23 @@ public class NodeLocation implements IAlgorithm
 		//z_l
 		final double [] z_l = op.getPrimalSolution("z_l").to1DArray();
 		final double [] x_e = op.getPrimalSolution("x_e").to1DArray();
-				
-		/* TO-DO */
-		/* Save the access-to-node links in the design (links are not bidirectional) */
-		e=0;
-		for (Node b : B) 
-		{
+		
+		for (Node b : B){
 			final int buildingIndex = mapBuilding2Index.get(b);
-			for (Node l : L)
-			{
+			for (Node l : L){
 				final int luminaireIndex = mapLuminaire2Index.get(l);
-				
-				if ((z_l[luminaireIndex]==1) && (x_e[e] > 0))
+				if (netPlan.getNodePairEuclideanDistance (b,l) <= Dmax)
 				{
-					if( z_eb.get(e, buildingIndex)==1.0 && z_el.get(e, luminaireIndex)==1.0){
-						netPlan.addLink(b, l, x_e[e], netPlan.getNodePairEuclideanDistance(b,l) , 200000 , null);
-						l.addTag ("HASPICOCELL");
-					}
+					final int e = mapLink2Index.size();
+					mapLink2Index.put (Pair.of (b,l) , e);
+					z_eb.set (e , buildingIndex, 1.0);
+					z_el.set (e , luminaireIndex, 1.0);
 				}
-			e++;
 			}
 		}
 		
+		
+						
 		/* checks */
 		for (Node b : B) 
 		{
