@@ -110,40 +110,41 @@ public class NodeLocation implements IAlgorithm
 		final BidiMap<Node,Integer> mapBuilding2Index = getAsBidiIndexMap (B);
 		final BidiMap<Node,Integer> mapLuminaire2Index = getAsBidiIndexMap (L);
 		
+		
 		/* Typically, you start reading the input parameters */
 		final Double Dmax = Double.parseDouble (algorithmParameters.get ("Dmax"))/1000; //Max distance in m
 		final Double costPerBlockedMbps = Double.parseDouble (algorithmParameters.get ("costPerBlockedMbps")); //Factor 
 		final Double costPerPicoCell = Double.parseDouble (algorithmParameters.get ("costPerPicoCell")); //Mbps
 		final Double maxTrafficPerPicoCellMbps = Double.parseDouble (algorithmParameters.get ("maxTrafficPerPicoCellMbps")); //Mbps
 
-		/* Create the optimization object */
-		OptimizationProblem op = new OptimizationProblem();
+		/* Compute the set of links */
+		final BidiMap<Pair<Node,Node>,Integer> mapLink2Index = new DualHashBidiMap<> ();
+		final DoubleMatrix2D z_eb = DoubleFactory2D.sparse.make(E,nB); //nB*nL is the total number of couples
+		final DoubleMatrix2D z_el = DoubleFactory2D.sparse.make(E,nL);
+		for (Node b : B)
+			for (Node l : L)
+				if (netPlan.getNodePairEuclideanDistance (b,l) <= Dmax)
+				{
+					final int e = mapLink2Index.size ();
+					mapLink2Index.put (Pair.of (b,l) , e);
+					z_eb.set (e , mapBuilding2Index.get(b));
+					z_el.set (e , mapLuminaire2Index.get(l));
+				}
 		
+		final int E = mapLink2Index.size ();
 		final int nB = B.size();	//number of buildings
 		final int nL = L.size();	//number of luminaires
 		System.out.println("Number of buildings: "+nB);
 		System.out.println("Number of luminaires: "+nL);
 
 		/* Initialize an array with the demanded traffic for each building */
+		/* Create the optimization object */
+		OptimizationProblem op = new OptimizationProblem();
+		
 		DoubleMatrix1D X_b = DoubleFactory1D.dense.make (nB , 50.0);
 		
-		final DoubleMatrix2D z_eb = DoubleFactory2D.sparse.make(nB*nL,nB); //nB*nL is the total number of couples
-		final DoubleMatrix2D z_el = DoubleFactory2D.sparse.make(nB*nL,nL);
-		int e=0;
-		for(Node b:B){
-			for(Node l:L){
-				if(netPlan.getNodePairEuclideanDistance(b,l)< Dmax ){
-					final int buildingIndex = mapBuilding2Index.get(b);
-					final int luminaireIndex = mapLuminaire2Index.get(l);
-					z_eb.set(e, buildingIndex, 1.0);
-					z_el.set(e, luminaireIndex, 1.0);					
-				}
-				e++;
-			}
-		}
-
 		/* Add the decision variables */
-		op.addDecisionVariable("x_e" , true , new int [] {1,nB*nL} , 0 , maxTrafficPerPicoCellMbps);
+		op.addDecisionVariable("x_e" , false , new int [] {1,E} , 0 , maxTrafficPerPicoCellMbps);
 		op.addDecisionVariable("z_l" , true , new int [] {1,nL} , 0 , 1); 
 		
 		/* Add the input parameters */
