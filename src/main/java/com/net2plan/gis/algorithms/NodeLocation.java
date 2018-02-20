@@ -48,21 +48,23 @@ public class NodeLocation implements IAlgorithm
 	 * @param net2planParameters Pair name-value for some general parameters of Net2Plan
 	 * @return
 	 */
-	
+
 	private List<Node> B = new ArrayList<>();	//Buildings
 	private List<Node> L = new ArrayList<>();	//Luminaires
 	
-	private void createTopology(NetPlan netPlan){
+	private void createTopology(NetPlan netPlan, String path_buildings, String path_luminaires){
+		System.out.println("creating topology");
 		
 		/* remove topology */
-		netPlan.removeAllNetworkLayers();
+		netPlan.removeAllAttributes();
 		netPlan.removeAllNodes();
+		netPlan.removeAllNetworkLayers();
 		netPlan.removeAllLinks();
 		
 		GisMultilayer gml_C = new GisMultilayer("Cartagena");
 		List<File> files = new ArrayList<File>();
-		File Edificios = new File("C:/Users/jlrg_/Desktop/UPCT/QGIS/OSM2QGIS/EdificiosCiudad.geojson");
-		File Luminarias = new File("C:/Users/jlrg_/Desktop/UPCT/QGIS/OSM2QGIS/LuminariasCiudad.geojson");
+		File Edificios = new File(path_buildings);
+		File Luminarias = new File(path_luminaires);
 		files.add(Edificios);
 		files.add(Luminarias);
 		try {
@@ -75,7 +77,7 @@ public class NodeLocation implements IAlgorithm
 		while (gl_iterator.hasNext()) {
 			Long key = gl_iterator.next();
 			GisLayer gl = gml_C.getLayer(key);
-			System.out.println(gl.getName());
+			//System.out.println(gl.getName());
 			Collection<GisObject> goc = gl.getObjects().values();
 			for(GisObject go:goc){
 				if (gl.isBuildingsLayer()) {
@@ -102,49 +104,60 @@ public class NodeLocation implements IAlgorithm
 		
 	}
 	
-	
 	@Override
 	public String executeAlgorithm(NetPlan netPlan, Map<String, String> algorithmParameters, Map<String, String> net2planParameters)
 	{
-		
-		createTopology(netPlan);
-		final BidiMap<Node,Integer> mapBuilding2Index = getAsBidiIndexMap (B);
-		final BidiMap<Node,Integer> mapLuminaire2Index = getAsBidiIndexMap (L);
-		final BidiMap<Pair<Node,Node>,Integer> mapLink2Index = new DualHashBidiMap<> ();
-		
-		
+	
 		/* Typically, you start reading the input parameters */
 		final Double Dmax = Double.parseDouble (algorithmParameters.get ("Dmax"))/1000; //Max distance in m
 		final Double costPerBlockedMbps = Double.parseDouble (algorithmParameters.get ("costPerBlockedMbps")); //Factor 
 		final Double costPerPicoCell = Double.parseDouble (algorithmParameters.get ("costPerPicoCell")); //Mbps
 		final Double maxTrafficPerPicoCellMbps = Double.parseDouble (algorithmParameters.get ("maxTrafficPerPicoCellMbps")); //Mbps
-
-
+		final Double DemandedTrafficPerBuilding = Double.parseDouble (algorithmParameters.get ("DemandedTrafficPerBuilding")); //Mbps
+		final String path_buildings = algorithmParameters.get("path_buildings");
+		final String path_luminaires = algorithmParameters.get("path_luminaires");
+		final String solverLibraryName = algorithmParameters.get("solverLibraryName");
 		
-		final int E = mapLink2Index.size ();
+		System.out.println("building path: "+path_buildings);
+
+		createTopology(netPlan, path_buildings, path_luminaires);
+		final BidiMap<Node,Integer> mapBuilding2Index = getAsBidiIndexMap (B);
+		final BidiMap<Node,Integer> mapLuminaire2Index = getAsBidiIndexMap (L);
+		final BidiMap<Pair<Node,Node>,Integer> mapLink2Index = new DualHashBidiMap<> ();
+		
 		final int nB = B.size();	//number of buildings
 		final int nL = L.size();	//number of luminaires
 		System.out.println("Number of buildings: "+nB);
 		System.out.println("Number of luminaires: "+nL);
 		
 		/* Compute the set of links */
-		final DoubleMatrix2D z_eb = DoubleFactory2D.sparse.make(E,nB); //nB*nL is the total number of couples
-		final DoubleMatrix2D z_el = DoubleFactory2D.sparse.make(E,nL);
 		for (Node b : B){
-			final int buildingIndex = mapBuilding2Index.get(b);
 			for (Node l : L){
-				final int luminaireIndex = mapLuminaire2Index.get(l);
 				if (netPlan.getNodePairEuclideanDistance (b,l) <= Dmax)
 				{
 					final int e = mapLink2Index.size();
 					mapLink2Index.put (Pair.of (b,l) , e);
-					z_eb.set (e , buildingIndex, 1.0);
-					z_el.set (e , luminaireIndex, 1.0);
 				}
 			}
 		}
 		
-		DoubleMatrix1D X_b = DoubleFactory1D.dense.make (nB , 50.0);
+		final int E = mapLink2Index.size ();
+		System.out.println(E);
+		final DoubleMatrix2D z_eb = DoubleFactory2D.sparse.make(E,nB);
+		final DoubleMatrix2D z_el = DoubleFactory2D.sparse.make(E,nL);
+		System.out.println(z_eb.size());
+		for (int e = 0; e < E; e++) {
+			/* Retrieve info */
+			final Pair<Node, Node> pair = mapLink2Index.getKey(e);
+			final Node b = pair.getFirst();
+			final int buildingIndex = mapBuilding2Index.get(b);
+			final Node l = pair.getSecond();
+			final int luminaireIndex = mapLuminaire2Index.get(l);
+			z_eb.set (e , buildingIndex, 1.0);
+			z_el.set (e , luminaireIndex, 1.0);
+		}
+		
+		DoubleMatrix1D X_b = DoubleFactory1D.dense.make (nB , DemandedTrafficPerBuilding);
 		
 		/* Initialize an array with the demanded traffic for each building */
 		/* Create the optimization object */
@@ -171,7 +184,8 @@ public class NodeLocation implements IAlgorithm
 		op.addConstraint("x_e * z_el <= maxTrafficPerPicoCellMbps * z_l");
 
 		/* Call the solver to solve the problem */
-		op.solve("cplex", "maxSolverTimeInSeconds" , 60);
+		op.solve(solverLibraryName , "maxSolverTimeInSeconds", 2*60);
+
 		if (!op.solutionIsOptimal()) throw new Net2PlanException ("The solution is not optimal");
 		
 		
@@ -182,22 +196,22 @@ public class NodeLocation implements IAlgorithm
 		final double [] z_l = op.getPrimalSolution("z_l").to1DArray();
 		final double [] x_e = op.getPrimalSolution("x_e").to1DArray();
 		
-		for (Node b : B){
+		for (int e = 0; e < E; e++) {
+			/* Retrieve info */
+			final Pair<Node, Node> pair = mapLink2Index.getKey(e);
+			final Node b = pair.getFirst();
 			final int buildingIndex = mapBuilding2Index.get(b);
-			for (Node l : L){
-				final int luminaireIndex = mapLuminaire2Index.get(l);
-				if (netPlan.getNodePairEuclideanDistance (b,l) <= Dmax)
-				{
-					final int e = mapLink2Index.size();
-					mapLink2Index.put (Pair.of (b,l) , e);
-					z_eb.set (e , buildingIndex, 1.0);
-					z_el.set (e , luminaireIndex, 1.0);
+			final Node l = pair.getSecond();
+			final int luminaireIndex = mapLuminaire2Index.get(l);
+
+			if ((z_l[luminaireIndex] == 1) && (x_e[e] > 0)) {
+				if (z_eb.get(e, buildingIndex) == 1.0 && z_el.get(e, luminaireIndex) == 1.0) {
+					netPlan.addLink(b, l, x_e[e], netPlan.getNodePairEuclideanDistance(b, l), 200000, null);
+					l.addTag("HASPICOCELL");
 				}
 			}
 		}
 		
-		
-						
 		/* checks */
 		for (Node b : B) 
 		{
@@ -233,7 +247,6 @@ public class NodeLocation implements IAlgorithm
 		return "GIS Algorithm";
 	}
 
-	
 	/** Returns the list of input parameters of the algorithm. For each parameter, you should return a Triple with its name, default value and a description
 	 * @return
 	 */
@@ -245,6 +258,10 @@ public class NodeLocation implements IAlgorithm
 		param.add (Triple.of ("costPerBlockedMbps" , "80" , "Virtual cost per Mbps of not covering a users traffic with picocells"));
 		param.add (Triple.of ("maxTrafficPerPicoCellMbps" , "100" , "Max Mbps offered by each antenna"));
 		param.add (Triple.of ("costPerPicoCell" , "100" , "Cost per installing each Pico Cell"));
+		param.add (Triple.of ("DemandedTrafficPerBuilding" , "50" , "Demanded traffic in Mbps"));
+		param.add (Triple.of ("path_buildings" , "data/E2.geojson" , "Buildings file"));
+		param.add (Triple.of ("path_luminaires" , "data/L1.geojson" , "Luminaires file"));
+		param.add (Triple.of ("solverLibraryName" , "cplex" , "Solver Library Name"));
 		
 		
 		return param;
