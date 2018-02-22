@@ -1,10 +1,14 @@
 
 package com.net2plan.gis.algorithms;
 
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -48,10 +52,10 @@ public class NodeLocation implements IAlgorithm
 	 * @param net2planParameters Pair name-value for some general parameters of Net2Plan
 	 * @return
 	 */
-
+	
 	private List<Node> B = new ArrayList<>();	//Buildings
 	private List<Node> L = new ArrayList<>();	//Luminaires
-	
+
 	private void createTopology(NetPlan netPlan, String path_buildings, String path_luminaires){
 		System.out.println("creating topology");
 		
@@ -118,12 +122,16 @@ public class NodeLocation implements IAlgorithm
 		final String path_luminaires = algorithmParameters.get("path_luminaires");
 		final String solverLibraryName = algorithmParameters.get("solverLibraryName");
 		
+		
 		System.out.println("building path: "+path_buildings);
 
 		createTopology(netPlan, path_buildings, path_luminaires);
+		
 		final BidiMap<Node,Integer> mapBuilding2Index = getAsBidiIndexMap (B);
 		final BidiMap<Node,Integer> mapLuminaire2Index = getAsBidiIndexMap (L);
 		final BidiMap<Pair<Node,Node>,Integer> mapLink2Index = new DualHashBidiMap<> ();
+		
+		
 		
 		final int nB = B.size();	//number of buildings
 		final int nL = L.size();	//number of luminaires
@@ -131,21 +139,23 @@ public class NodeLocation implements IAlgorithm
 		System.out.println("Number of luminaires: "+nL);
 		
 		/* Compute the set of links */
+		int count = 0;
 		for (Node b : B){
 			for (Node l : L){
+				System.out.println("Iteration: "+ count++);
 				if (netPlan.getNodePairEuclideanDistance (b,l) <= Dmax)
 				{
 					final int e = mapLink2Index.size();
 					mapLink2Index.put (Pair.of (b,l) , e);
+					System.out.println("################## Pair in coverage number: "+e);
 				}
 			}
 		}
 		
 		final int E = mapLink2Index.size ();
-		System.out.println(E);
+		System.out.println("Number of potential links in coverage: "+E);
 		final DoubleMatrix2D z_eb = DoubleFactory2D.sparse.make(E,nB);
 		final DoubleMatrix2D z_el = DoubleFactory2D.sparse.make(E,nL);
-		System.out.println(z_eb.size());
 		for (int e = 0; e < E; e++) {
 			/* Retrieve info */
 			final Pair<Node, Node> pair = mapLink2Index.getKey(e);
@@ -183,8 +193,9 @@ public class NodeLocation implements IAlgorithm
 		op.addConstraint("x_e * z_eb <= X_b");
 		op.addConstraint("x_e * z_el <= maxTrafficPerPicoCellMbps * z_l");
 
+		System.out.println(solverLibraryName);
 		/* Call the solver to solve the problem */
-		op.solve(solverLibraryName , "maxSolverTimeInSeconds", 2*60);
+		op.solve("cplex" ,"solverLibraryName", solverLibraryName , "maxSolverTimeInSeconds", 2*60);
 
 		if (!op.solutionIsOptimal()) throw new Net2PlanException ("The solution is not optimal");
 		
@@ -211,6 +222,22 @@ public class NodeLocation implements IAlgorithm
 				}
 			}
 		}
+		
+		Double alpha = costPerBlockedMbps/costPerPicoCell;
+		// - Eje X factor ALFA, eje Y número de luminarias
+		int numberOfConnectedLuminaires = Collections.frequency(Arrays.asList(z_l), 1);
+		
+		//	- Eje X factor ALFA, eje Y edificios fuera de cobertura
+		//int numberOfNotConnectedBuildings = ;
+		
+		//	-  Eje X factor ALFA, eje Y Mbps totales NO cubiertos por ninguna luminaria
+		//Double product =  x_e * z_eb;
+		//Double mbpsNotCovered = sum(X_b - (x_e * z_eb );
+		
+		//	-  Eje X factor ALFA, eje Y bloqueo en el sentido: Mbps totales NO cubiertos por ninguna luminaria / Mbps ofrecidos
+		
+		
+		
 		
 		/* checks */
 		for (Node b : B) 
