@@ -283,9 +283,10 @@ public class NodeLocation implements IAlgorithm, java.io.Serializable
 		op.setObjectiveFunction("minimize", "sum(z_l)"); 
 		
 		/* Add the contraints */
-		op.addConstraint("x_cl <= maxTrafficPerPicoCellMbps * z_l");
+		op.addConstraint("sum(x_cl,1) <= maxTrafficPerPicoCellMbps * z_l "); //aquí hay que sumar las c para que se quede un vector fila de l
+		op.addConstraint("sum(x_cl,2) <= t_c' "); // aquí hay que sumar las l para que se quede un vector columna de c
 		op.addConstraint("x_cl >= percCoverageRatio*t_c");
-		op.addConstraint("x_cl <= t_c");
+
 
 		System.out.println(solverLibraryName);
 		/* Call the solver to solve the problem */
