@@ -12,6 +12,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
+import java.net.MalformedURLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -71,7 +72,7 @@ public class NodeLocation implements IAlgorithm, java.io.Serializable
 	private List<Node> L = new ArrayList<>();	//Luminaires
 	private List<Node> C = new ArrayList<>();	//Cells
 
-	private void createTopology(NetPlan netPlan, String path_cells/*String path_buildings*/, String path_luminaires){
+	private void createTopology(NetPlan netPlan, String path_luminaires/*String path_buildings*/, String path_cells){
 		System.out.println("creating topology");
 		
 		/* remove topology */
@@ -92,6 +93,7 @@ public class NodeLocation implements IAlgorithm, java.io.Serializable
 			gml_C.buildFromGeoJson(gml_C, files);
 		} catch (Exception e) {};
 		
+		System.out.println("Computing the number of luminaires and cells from files...");
 		Map<Long, GisLayer> layers = gml_C.getLayers();
 		//System.out.println(layers.size());
 		Iterator<Long> gl_iterator = layers.keySet().iterator();
@@ -101,19 +103,12 @@ public class NodeLocation implements IAlgorithm, java.io.Serializable
 			//System.out.println(gl.getName());
 			Collection<GisObject> goc = gl.getObjects().values();
 			for(GisObject go:goc){
-				/*if (gl.isBuildingsLayer()) {
-					Building object = (Building) go;
-					B.add(netPlan.addNode(object.getCenter().getX(), object.getCenter().getY(),
-							"Building_"+String.valueOf(object.getId()), object.getProperties()));
-					//System.out.println("Added building "+"Building_"+String.valueOf(object.getId()));
-				}else*/ if (gl.isLuminairesLayer()) {
+				if (gl.isLuminairesLayer()) {
 					Luminaire object = (Luminaire) go;
 					L.add(netPlan.addNode(object.getPoint().getX(), object.getPoint().getY(),"Luminaire_"+String.valueOf(object.getId()), null));
-					//System.out.println("Added luminaire "+"Luminaire_"+String.valueOf(object.getId()));
 				}else if (gl.isCellsLayer()) {
 					Cell object = (Cell) go;
-					//C.add(netPlan.addNode(object.getPoint().getX(), object.getPoint().getY(),"Cell_"+String.valueOf(object.getId()), null));
-					//System.out.println("Added luminaire "+"Luminaire_"+String.valueOf(object.getId()));
+					C.add(netPlan.addNode(object.getPoint().getX(), object.getPoint().getY(),"Cell_"+String.valueOf(object.getId()), null));
 				}
 			}
 		}
@@ -126,15 +121,14 @@ public class NodeLocation implements IAlgorithm, java.io.Serializable
 				e.printStackTrace();
 			}
 
-			for (Node b_node : B) {
+			for (Node c_node : C) {
 				try {
-					b_node.setUrlNodeIcon(netPlan.getNetworkLayerDefault(), new File("data/Building.png").toURL());
+					c_node.setUrlNodeIcon(netPlan.getNetworkLayerDefault(), new File("data/phone1.png").toURL());
 				} catch (MalformedURLException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 			}
-
 		}*/
 		
 	}
@@ -157,52 +151,28 @@ public class NodeLocation implements IAlgorithm, java.io.Serializable
 		final Double percCoverageRatio = Double.parseDouble (algorithmParameters.get ("percCoverageRatio"))/100; //percentage
 		final int numInhabitants = Integer.parseInt(algorithmParameters.get ("numInhabitants"));
 
+
 		createTopology(netPlan, path_luminaires, path_cells);
 		
-		//final BidiMap<Node,Integer> mapBuilding2Index = getAsBidiIndexMap (B);
 		final BidiMap<Node,Integer> mapLuminaire2Index = getAsBidiIndexMap (L);
 		final BidiMap<Node,Integer> mapCell2Index = getAsBidiIndexMap (C);
 		final BidiMap<Pair<Node,Node>,Integer> mapLink2Index = new DualHashBidiMap<> ();
 		
-		//final int nB = B.size();	//number of buildings
 		final int nL = L.size();	//number of luminaires
 		final int nC = C.size();	//number of Cells
-		//System.out.println("Number of buildings: "+nB);
 		System.out.println("Number of luminaires: "+nL);
 		System.out.println("Number of cells: "+nC);
-		
-		/* Compute the set of links */
-		//Map<Node,String> buildingsInCoverage = new HashMap();
-		Map<Node,String> luminairesInCoverage = new HashMap();
-		Map<Node,String> cellsInCoverage = new HashMap();
 
 	//### ESTO HACERLO SOLAMENTE UNA VEZ ###//	
-		//for (Node b : B){
-		String path_cellsInCoverage = "data/cellsInCoverage.txt";
-		String path_luminairesInCoverage = "data/luminairesInCoverage.txt";
 		String path_mapLink2Index = "data/mapLink2Index.txt";
-		
-		File file_cellsInCoverage = new File(path_cellsInCoverage);
-		File file_luminairesInCoverage = new File(path_luminairesInCoverage);
 		File file_mapLink2Index = new File(path_mapLink2Index);
 		
-		if (file_cellsInCoverage.exists() && file_luminairesInCoverage.exists() && file_mapLink2Index.exists()) { // load
-			try {
-		         FileInputStream fileIn = new FileInputStream(path_cellsInCoverage);
-		         ObjectInputStream in = new ObjectInputStream(fileIn);
-		         cellsInCoverage = (Map<Node,String>) in.readObject();
-		         in.close();
-		         fileIn.close();
-		         
-		         fileIn = new FileInputStream(path_luminairesInCoverage);
-		         in = new ObjectInputStream(fileIn);
-		         luminairesInCoverage = (Map<Node,String>) in.readObject();
-		         in.close();
-		         fileIn.close();
-		         
-		         fileIn = new FileInputStream(path_mapLink2Index);
-		         in = new ObjectInputStream(fileIn);
-		         mapLink2Index = (BidiMap<Pair<Node,Node>,Integer>) in.readObject();
+		/*if (file_mapLink2Index.exists()) { // load
+			System.out.println("deserializing data...");
+			try {   
+				 FileInputStream fileIn = new FileInputStream(path_mapLink2Index);
+				 ObjectInputStream in = new ObjectInputStream(fileIn);
+		         mapLink2Index = (DualHashBidiMap) in.readObject();
 		         in.close();
 		         fileIn.close();
 		         
@@ -212,52 +182,35 @@ public class NodeLocation implements IAlgorithm, java.io.Serializable
 		         System.out.println("Employee class not found");
 		         c.printStackTrace();
 		      }
-		} else { // run and save
+		} else { // run and save*/
 
 			for (Node c : C) {
 				for (Node l : L) {
 					if (netPlan.getNodePairHaversineDistanceInKm(c, l) <= Dmax) {
-						cellsInCoverage.put(c, "1");
-						luminairesInCoverage.put(l, "1");
 						final int e = mapLink2Index.size();
 						mapLink2Index.put(Pair.of(c, l), e);
-						
-						// System.out.println("################## Pair in
-						// coverage number: "+e);
 					}
-
 				}
-			}	
-		      try {
-		          FileOutputStream fileOut = new FileOutputStream(path_cellsInCoverage);
-		          ObjectOutputStream out = new ObjectOutputStream(fileOut);
-		          out.writeObject(cellsInCoverage);
-		          out.close();
-		          fileOut.close();
-		          
-		          fileOut = new FileOutputStream(path_luminairesInCoverage);
-		          out = new ObjectOutputStream(fileOut);
-		          out.writeObject(luminairesInCoverage);
-		          out.close();
-		          fileOut.close();
-		          
-		          fileOut = new FileOutputStream(path_mapLink2Index);
-		          out = new ObjectOutputStream(fileOut);
+			}	/*
+		      try {         
+		    	  FileOutputStream fileOut = new FileOutputStream(path_mapLink2Index);
+		    	  ObjectOutputStream out = new ObjectOutputStream(fileOut);
 		          out.writeObject(mapLink2Index);
 		          out.close();
 		          fileOut.close();
-		         
-		          System.out.printf("Serialized data are saved");
+		          System.out.println("Serialized data are saved");
 		       } catch (IOException i) {
 		          i.printStackTrace();
 		       }
-		}
+		}*/
 		
 		final int E = mapLink2Index.size ();
 		System.out.println("Number of potential links in coverage: "+E);
 		
 		final DoubleMatrix2D z_ec = DoubleFactory2D.sparse.make(E,nC);
 		final DoubleMatrix2D z_el = DoubleFactory2D.sparse.make(E,nL);
+		System.out.println("Spare matrix created!");
+		
 		for (int e = 0; e < E; e++) {
 			/* Retrieve info */
 			final Pair<Node, Node> pair = mapLink2Index.getKey(e);
@@ -269,14 +222,16 @@ public class NodeLocation implements IAlgorithm, java.io.Serializable
 			z_el.set (e , luminaireIndex, 1.0);
 		}
 		
-		DoubleMatrix1D t_c = DoubleFactory1D.dense.make (nC , TrafPerUser*percUsersInStreet*numInhabitants/nC);
+		double trafficPerCell = TrafPerUser*percUsersInStreet*numInhabitants/nC;
+		DoubleMatrix1D t_c = DoubleFactory1D.dense.make(nC, trafficPerCell);
+		System.out.println("t_c vector created");
 		
 		/* Initialize an array with the demanded traffic for each building */
 		/* Create the optimization object */
 		OptimizationProblem op = new OptimizationProblem();
 		
 		/* Add the decision variables */
-		op.addDecisionVariable("x_cl" , false , new int [] {nC,nL} , 0 , maxTrafficPerPicoCellMbps*C_lc);
+		op.addDecisionVariable("x_e" , false , new int [] {1,E} , 0 , maxTrafficPerPicoCellMbps);
 		op.addDecisionVariable("z_l" , true , new int [] {1,nL} , 0 , 1); 
 		
 		/* Add the input parameters */
@@ -291,112 +246,21 @@ public class NodeLocation implements IAlgorithm, java.io.Serializable
 		op.setObjectiveFunction("minimize", "sum(z_l)"); 
 		
 		/* Add the contraints */
-		op.addConstraint("sum(x_cl,1) <= maxTrafficPerPicoCellMbps * z_l "); //aquí hay que sumar las c para que se quede un vector fila de l
-		op.addConstraint("sum(x_cl,2) <= t_c' "); // aquí hay que sumar las l para que se quede un vector columna de c
-		op.addConstraint("sum(x_cl) >= percCoverageRatio*sum(t_c)");
+		op.addConstraint("(x_e * z_el) <= maxTrafficPerPicoCellMbps * z_l ");
+		op.addConstraint("(x_e * z_ec)' <= t_c' ");
+		op.addConstraint("sum(x_e) >= percCoverageRatio*sum(t_c)");
 
 
 		System.out.println(solverLibraryName);
 		/* Call the solver to solve the problem */
 		op.solve("cplex" ,"solverLibraryName", solverLibraryName , "maxSolverTimeInSeconds", maxSolverTimeInMinutes*60);
 
-/*		//if (!op.solutionIsOptimal()) throw new Net2PlanException ("The solution is not optimal");
+		if (!op.solutionIsOptimal()) throw new Net2PlanException ("The solution is not optimal");
 		
-		
-		 TO-DO 
-		 Retrieve the optimal solution found 
-		//x_e
-		//z_l
+		/* Retrieve info */
 		final double [] z_l = op.getPrimalSolution("z_l").to1DArray();
 		final double [] x_e = op.getPrimalSolution("x_e").to1DArray();
 		
-		for (int e = 0; e < E; e++) {
-			 Retrieve info 
-			final Pair<Node, Node> pair = mapLink2Index.getKey(e);
-			final Node b = pair.getFirst();
-			final int buildingIndex = mapBuilding2Index.get(b);
-			final Node l = pair.getSecond();
-			final int luminaireIndex = mapLuminaire2Index.get(l);
-
-			if ((z_l[luminaireIndex] == 1) && (x_e[e] > 0)) {
-				if (z_eb.get(e, buildingIndex) == 1.0 && z_el.get(e, luminaireIndex) == 1.0) {
-					netPlan.addLink(b, l, x_e[e], netPlan.getNodePairHaversineDistanceInKm(b, l), 200000, null);
-					l.addTag("HASPICOCELL");
-				}
-			}
-		}
-		
-		
-		 checks 
-		DoubleMatrix1D x_edm = DoubleFactory1D.dense.make (x_e.length , 0);
-		x_edm.assign(x_e);
-		
-		if(trafficPerBuilding.zSum() != x_edm.zSum())
-			throw new Net2PlanException ("The sum of the traffic per each building must be equal to the sum of the traffic in each link.");
-			
-		for (Node b : B)
-		{
-			final int buildingIndex = mapBuilding2Index.get(b);
-			if(b.getIncomingLinksAllLayers().isEmpty()){  Has the building incoming links? 
-				if(b.getOutgoingLinksTraffic() > X_b.get(buildingIndex)){  Exceeds the building the maximum traffic limit? 
-					throw new Net2PlanException ("The outgoing traffic in a building exceeds the maximum limit."); }
-			}else{ throw new Net2PlanException ("The buildings has one or more incoming links."); }
-		}
-		
-		for (Node l : L) {
-			if (l.getOutgoingLinksAllLayers().isEmpty()) {  Has the luminaire outgoing links? 
-				if (l.getIncomingLinksAllLayers().isEmpty()) {  if the luminaire does not have incoming layers... 
-					if (l.hasTag("HASPICOCELL")) {  ... it must not have the "HASPICOCELL" tag 
-						throw new Net2PlanException ("The luminaire is not tagged correctly. It must not have the \"HASPICOCELL\" tag."); }
-				} else {  else the luminaire has incoming links... 
-					if (!l.hasTag("HASPICOCELL")) {  ... it must have the tag.
-						throw new Net2PlanException ("The luminaire is not tagged correctly. It must have the \"HASPICOCELL\" tag.");}
-					if (l.getIncomingLinksTraffic() > maxTrafficPerPicoCellMbps) {  Exceeds the luminaire the maximum traffic limit? 
-						throw new Net2PlanException ("The luminaire exceeds the maximum traffic limit.");}
-				}
-			} else { throw new Net2PlanException ("A luminaire has one or more outgoing links."); }
-		}
-		
-		Double alpha = costPerPicoCell/costPerBlockedMbps;
-		// 1- X ALPHA, Y number of luminaires with picocell
-		List<Double> z_lL = Arrays.stream(z_l).boxed().collect(Collectors.toList());
-		long numberOfConnectedLuminaires = z_lL.stream().filter(n -> n == 1.0).count(); //number of luminaires with picocell
-		final Double luminairesRelation = (double) numberOfConnectedLuminaires/ (double) luminairesInCoverage.size();
-		
-		// 2- X ALPHA, Y number of buildings out of coverage
-		DoubleMatrix1D trafficPerBuilding =  multiply(x_e, z_eb.toArray()); // Given traffic by luminaires
-		int numberOfConnectedBuildings = 0;
-		for(int i=0; i<trafficPerBuilding.size();i++){
-			if(trafficPerBuilding.get(i) > 0) numberOfConnectedBuildings++;
-		}		
-		final Double buildingsRelation = (double) numberOfConnectedBuildings/ (double) buildingsInCoverage.size();
-		
-		// 3- X ALPHA, Y Mbps not covered
-		Double mbpsNotCovered = X_b.zSum() - trafficPerBuilding.zSum();
-		
-		// 4- X ALPHA, Y relation MbpsNotCovered/MbpsDemanded
-		Double relationNotCoveredAndOffered = mbpsNotCovered/X_b.zSum();
-		
-		 Save in a file to be loaded in Matlab 
-		PrintWriter writer;
-		System.out.println("Creating data file...");
-		try {
-			writer = new PrintWriter("graphs/NodeLocation_"+alpha+"_"+DemandedTrafficPerBuilding+".txt", "UTF-8");
-			writer.println(alpha);
-			writer.println(luminairesRelation);
-			writer.println(buildingsRelation);
-			writer.println(mbpsNotCovered);
-			writer.println(relationNotCoveredAndOffered);
-			writer.close();
-			System.out.println("graphs/NodeLocation_"+alpha+"_"+DemandedTrafficPerBuilding+".txt CREATED");
-		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (UnsupportedEncodingException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}*/
-
 		return "Ok! total cost: " + op.getOptimalCost(); 
 	}
 
@@ -417,18 +281,22 @@ public class NodeLocation implements IAlgorithm, java.io.Serializable
 		final List<Triple<String, String, String>> param = new LinkedList<Triple<String, String, String>> ();
 
 		param.add (Triple.of ("path_cells" , "data/Centroids5.geojson" , "Cells file"));
-		param.add (Triple.of ("path_luminaires" , "data/L1.geojson" , "Luminaires file"));
+		param.add (Triple.of ("path_luminaires" , "data/luminarias-ct-estudio.geojson" , "Luminaires file"));
 		param.add (Triple.of ("maxTrafficPerPicoCellMbps" , "1024" , "Max Mbps offered by each antenna"));
 		param.add (Triple.of ("Dmax" , "50" , "Max coverage distance in m"));
 		param.add (Triple.of ("TrafPerUser" , "50" , "Traffic per user in Mbps"));
-		param.add (Triple.of ("percUsersInStreet" , "80" , "Peak % users in street"));
-		param.add (Triple.of ("percCoverageRatio" , "10" , "Ratio Coverage in %"));
+		param.add (Triple.of ("percUsersInStreet" , "80" , "Peak % users in the street"));
+		param.add (Triple.of ("percCoverageRatio" , "10" , "Traffic Coverage in %"));
 		param.add (Triple.of ("numInhabitants" , "49966" , "Numbers of inhabitants"));
 		param.add (Triple.of ("solverLibraryName" , "cplex" , "Solver Library Name"));
-		param.add (Triple.of ("maxSolverTimeInMinutes" , "2" , "Max Solver time in minutes"));
+		param.add (Triple.of ("maxSolverTimeInMinutes" , "1" , "Max Solver time in minutes"));
 
 		return param;
 	}
+	
+	public void serialize(){}
+	
+	public void deserialize(){}
 	
 	public void printMatrix(double[][] m){
 	    try{

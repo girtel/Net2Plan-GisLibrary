@@ -44,11 +44,11 @@ public class GisLayer implements Comparable<GisLayer>
 	
 	public long getUniqueLayerId() { return this.uniqueLayerId;}
 
-	private GisConstants.GISLAYERTYPE setLayerType(String geometryType, boolean isLuminaire){
+	public GisConstants.GISLAYERTYPE setLayerType(String geometryType, boolean isLuminaire){
 		if (geometryType.equals("Polygon")){return GisConstants.GISLAYERTYPE.BUILDINGS;}
 		else if(geometryType.equals("LineString")){return GisConstants.GISLAYERTYPE.ROADS;}
-		else if(geometryType.equals("Point") && isLuminaire){return GisConstants.GISLAYERTYPE.LUMINAIRES;}
 		else if(geometryType.equals("Point") && !isLuminaire){return GisConstants.GISLAYERTYPE.CELLS;}
+		else if(geometryType.equals("Point") && isLuminaire){return GisConstants.GISLAYERTYPE.LUMINAIRES;}
 		else return GisConstants.GISLAYERTYPE.UNKNOWN;
 	}
 	
