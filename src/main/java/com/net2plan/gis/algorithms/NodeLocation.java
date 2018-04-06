@@ -118,13 +118,23 @@ public class NodeLocation implements IAlgorithm, java.io.Serializable
 			}
 		}
 		
-		/*for(Node l_node : L)
-		{
-			l_node.setUrlNodeIcon(netPlan.getNetworkLayerDefault(), TopologyPanel.class.getResource("/resources/gui/figs/BaseStation.png"));
-		}
-		for(Node b_node : B)
-		{
-			b_node.setUrlNodeIcon(netPlan.getNetworkLayerDefault(), TopologyPanel.class.getResource("/resources/gui/figs/Building.png"));
+		/*for (Node l_node : L) {
+			try {
+				l_node.setUrlNodeIcon(netPlan.getNetworkLayerDefault(), new File("data/BaseStation.png").toURL());
+			} catch (MalformedURLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+
+			for (Node b_node : B) {
+				try {
+					b_node.setUrlNodeIcon(netPlan.getNetworkLayerDefault(), new File("data/Building.png").toURL());
+				} catch (MalformedURLException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+
 		}*/
 		
 	}
@@ -246,8 +256,6 @@ public class NodeLocation implements IAlgorithm, java.io.Serializable
 		final int E = mapLink2Index.size ();
 		System.out.println("Number of potential links in coverage: "+E);
 		
-		/**/
-		
 		final DoubleMatrix2D z_ec = DoubleFactory2D.sparse.make(E,nC);
 		final DoubleMatrix2D z_el = DoubleFactory2D.sparse.make(E,nL);
 		for (int e = 0; e < E; e++) {
@@ -285,7 +293,7 @@ public class NodeLocation implements IAlgorithm, java.io.Serializable
 		/* Add the contraints */
 		op.addConstraint("sum(x_cl,1) <= maxTrafficPerPicoCellMbps * z_l "); //aquí hay que sumar las c para que se quede un vector fila de l
 		op.addConstraint("sum(x_cl,2) <= t_c' "); // aquí hay que sumar las l para que se quede un vector columna de c
-		op.addConstraint("x_cl >= percCoverageRatio*t_c");
+		op.addConstraint("sum(x_cl) >= percCoverageRatio*sum(t_c)");
 
 
 		System.out.println(solverLibraryName);
