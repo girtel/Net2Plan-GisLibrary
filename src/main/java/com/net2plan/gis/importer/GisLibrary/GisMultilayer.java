@@ -73,24 +73,30 @@ public class GisMultilayer{
 		// Creación de GisObjects
 		List<GisObject> objects = new ArrayList<GisObject>();
 		ListIterator<GeoJSONParser.GeoJSONFeature> objectsIterator = parser.features.listIterator(); // iterador
-		if (gl.isBuildingsLayer()) { // son edificios?
+		if (gl.isBuildingsLayer()) { // buildings?
 			while (objectsIterator.hasNext()) {
 				long id = gl.getNewObjectUniqueId();
 				Building building = new Building(objectsIterator.next(), gl, id);
 				gl.addObject(building);
 			}
-		} else if (gl.isRoadsLayer()) { // son carreteras?
+		} else if (gl.isRoadsLayer()) { // roads?
 			while (objectsIterator.hasNext()) {
 				long id = gl.getNewObjectUniqueId();
 				Road road = new Road(objectsIterator.next(), gl, id);
 				gl.addObject(road);
 			}
 
-		}else if (gl.isLuminairesLayer()) { // son luminarias?
+		}else if (gl.isLuminairesLayer()) { // luminaires?
 			while (objectsIterator.hasNext()) {
 				long id = gl.getNewObjectUniqueId();
 				Luminaire luminaire = new Luminaire(objectsIterator.next(), gl, id);
 				gl.addObject(luminaire);
+			}
+		}else if(gl.isCellsLayer()) { 
+			while (objectsIterator.hasNext()) {
+				long id = gl.getNewObjectUniqueId();
+				Cell cell = new Cell(objectsIterator.next(), gl, id);
+				gl.addObject(cell);
 			}
 		}
 	}

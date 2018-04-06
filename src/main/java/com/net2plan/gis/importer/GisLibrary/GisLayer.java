@@ -30,7 +30,11 @@ public class GisLayer implements Comparable<GisLayer>
 	public GisLayer(GisMultilayer gml, GeoJSONParser gJSONParser, long id){
 		this.gml = gml;
 		this.name = gJSONParser.name;
-		this.typeOfObjectsInside = setLayerType(gJSONParser.features.get(0).geometry.type);	
+		
+		boolean isLuminaire = gJSONParser.features.get(0).properties.containsKey("POTENCIA");
+		String geometryType = gJSONParser.features.get(0).geometry.type;
+		this.typeOfObjectsInside = setLayerType(geometryType, isLuminaire);	
+		
 		this.uniqueLayerId = id;
 	}
 	
@@ -40,10 +44,11 @@ public class GisLayer implements Comparable<GisLayer>
 	
 	public long getUniqueLayerId() { return this.uniqueLayerId;}
 
-	private GisConstants.GISLAYERTYPE setLayerType(String type){
-		if (type.equals("Polygon")){return GisConstants.GISLAYERTYPE.BUILDINGS;}
-		else if(type.equals("LineString")){return GisConstants.GISLAYERTYPE.ROADS;}
-		else if(type.equals("Point")){return GisConstants.GISLAYERTYPE.LUMINAIRES;}
+	private GisConstants.GISLAYERTYPE setLayerType(String geometryType, boolean isLuminaire){
+		if (geometryType.equals("Polygon")){return GisConstants.GISLAYERTYPE.BUILDINGS;}
+		else if(geometryType.equals("LineString")){return GisConstants.GISLAYERTYPE.ROADS;}
+		else if(geometryType.equals("Point") && isLuminaire){return GisConstants.GISLAYERTYPE.LUMINAIRES;}
+		else if(geometryType.equals("Point") && !isLuminaire){return GisConstants.GISLAYERTYPE.CELLS;}
 		else return GisConstants.GISLAYERTYPE.UNKNOWN;
 	}
 	
@@ -60,6 +65,8 @@ public class GisLayer implements Comparable<GisLayer>
 	public boolean isRoadsLayer () { return typeOfObjectsInside == GisConstants.GISLAYERTYPE.ROADS; }
 	
 	public boolean isLuminairesLayer () { return typeOfObjectsInside == GisConstants.GISLAYERTYPE.LUMINAIRES; }
+	
+	public boolean isCellsLayer () { return typeOfObjectsInside == GisConstants.GISLAYERTYPE.CELLS; }
 
 	public String getName(){ return this.name;}
 	

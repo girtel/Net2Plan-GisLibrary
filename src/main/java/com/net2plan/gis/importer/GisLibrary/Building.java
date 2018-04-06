@@ -31,9 +31,5 @@ public class Building extends GisObject
 		final double maxdis_y = this.getTrack().stream().mapToDouble(p->Math.abs(p.getY() - center.getY())).max ().orElse(0);
 		return Math.max(maxdis_x, maxdis_y);
 	}
-	
-	
-	
-	
-	
+
 }
