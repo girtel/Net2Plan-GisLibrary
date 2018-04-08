@@ -83,10 +83,8 @@ public class NodeLocation implements IAlgorithm, java.io.Serializable
 		
 		GisMultilayer gml_C = new GisMultilayer("Cartagena");
 		List<File> files = new ArrayList<File>();
-		//File Edificios = new File(path_buildings);
 		File Luminarias = new File(path_luminaires);
 		File Cells = new File(path_cells);
-		//files.add(Edificios);
 		files.add(Luminarias);
 		files.add(Cells);
 		try {
@@ -140,16 +138,14 @@ public class NodeLocation implements IAlgorithm, java.io.Serializable
 		/* Typically, you start reading the input parameters */
 		final Double Dmax = Double.parseDouble (algorithmParameters.get ("Dmax"))/1000; //Max distance in km
 		final Double maxTrafficPerPicoCellMbps = Double.parseDouble (algorithmParameters.get ("maxTrafficPerPicoCellMbps")); //Mbps
-		//final String path_buildings = algorithmParameters.get("path_buildings");
 		final String path_luminaires = algorithmParameters.get("path_luminaires");
-		final String path_cells = algorithmParameters.get("path_cells");
-		final String solverLibraryName = algorithmParameters.get("solverLibraryName");
-		final Double maxSolverTimeInMinutes = Double.parseDouble (algorithmParameters.get ("maxSolverTimeInMinutes"));
-		
+		final String path_cells = algorithmParameters.get("path_cells");	
 		final Double TrafPerUser = Double.parseDouble (algorithmParameters.get ("TrafPerUser")); //Mbps
 		final Double percUsersInStreet = Double.parseDouble (algorithmParameters.get ("percUsersInStreet"))/100; //percentage
 		final Double percCoverageRatio = Double.parseDouble (algorithmParameters.get ("percCoverageRatio"))/100; //percentage
-		final int numInhabitants = Integer.parseInt(algorithmParameters.get ("numInhabitants"));
+		final Integer numInhabitants = Integer.parseInt(algorithmParameters.get ("numInhabitants"));
+		final String solverLibraryName = algorithmParameters.get("solverLibraryName");
+		final Double maxSolverTimeInMinutes = Double.parseDouble (algorithmParameters.get ("maxSolverTimeInMinutes"));
 
 
 		createTopology(netPlan, path_luminaires, path_cells);
@@ -159,30 +155,9 @@ public class NodeLocation implements IAlgorithm, java.io.Serializable
 		final BidiMap<Pair<Node,Node>,Integer> mapLink2Index = new DualHashBidiMap<> ();
 		
 		final int nL = L.size();	//number of luminaires
-		final int nC = C.size();	//number of Cells
+		final int nC = C.size();	//number of cells
 		System.out.println("Number of luminaires: "+nL);
 		System.out.println("Number of cells: "+nC);
-
-	//### ESTO HACERLO SOLAMENTE UNA VEZ ###//	
-		String path_mapLink2Index = "data/mapLink2Index.txt";
-		File file_mapLink2Index = new File(path_mapLink2Index);
-		
-		/*if (file_mapLink2Index.exists()) { // load
-			System.out.println("deserializing data...");
-			try {   
-				 FileInputStream fileIn = new FileInputStream(path_mapLink2Index);
-				 ObjectInputStream in = new ObjectInputStream(fileIn);
-		         mapLink2Index = (DualHashBidiMap) in.readObject();
-		         in.close();
-		         fileIn.close();
-		         
-		      } catch (IOException i) {
-		         i.printStackTrace();
-		      } catch (ClassNotFoundException c) {
-		         System.out.println("Employee class not found");
-		         c.printStackTrace();
-		      }
-		} else { // run and save*/
 
 			for (Node c : C) {
 				for (Node l : L) {
@@ -191,25 +166,14 @@ public class NodeLocation implements IAlgorithm, java.io.Serializable
 						mapLink2Index.put(Pair.of(c, l), e);
 					}
 				}
-			}	/*
-		      try {         
-		    	  FileOutputStream fileOut = new FileOutputStream(path_mapLink2Index);
-		    	  ObjectOutputStream out = new ObjectOutputStream(fileOut);
-		          out.writeObject(mapLink2Index);
-		          out.close();
-		          fileOut.close();
-		          System.out.println("Serialized data are saved");
-		       } catch (IOException i) {
-		          i.printStackTrace();
-		       }
-		}*/
+			}
 		
 		final int E = mapLink2Index.size ();
 		System.out.println("Number of potential links in coverage: "+E);
 		
 		final DoubleMatrix2D z_ec = DoubleFactory2D.sparse.make(E,nC);
 		final DoubleMatrix2D z_el = DoubleFactory2D.sparse.make(E,nL);
-		System.out.println("Spare matrix created!");
+		System.out.println("Sparse matrix created!");
 		
 		for (int e = 0; e < E; e++) {
 			/* Retrieve info */
@@ -235,7 +199,6 @@ public class NodeLocation implements IAlgorithm, java.io.Serializable
 		op.addDecisionVariable("z_l" , true , new int [] {1,nL} , 0 , 1); 
 		
 		/* Add the input parameters */
-		op.setInputParameter("Dmax" , Dmax);
 		op.setInputParameter("t_c", t_c, "row");
 		op.setInputParameter("z_ec", z_ec);
 		op.setInputParameter("z_el", z_el);
@@ -245,7 +208,7 @@ public class NodeLocation implements IAlgorithm, java.io.Serializable
 		/* Add the Objective Function */
 		op.setObjectiveFunction("minimize", "sum(z_l)"); 
 		
-		/* Add the contraints */
+		/* Add the constraints */
 		op.addConstraint("(x_e * z_el) <= maxTrafficPerPicoCellMbps * z_l ");
 		op.addConstraint("(x_e * z_ec)' <= t_c' ");
 		op.addConstraint("sum(x_e) >= percCoverageRatio*sum(t_c)");
@@ -254,8 +217,6 @@ public class NodeLocation implements IAlgorithm, java.io.Serializable
 		System.out.println(solverLibraryName);
 		/* Call the solver to solve the problem */
 		op.solve("cplex" ,"solverLibraryName", solverLibraryName , "maxSolverTimeInSeconds", maxSolverTimeInMinutes*60);
-
-		if (!op.solutionIsOptimal()) throw new Net2PlanException ("The solution is not optimal");
 		
 		/* Retrieve info */
 		final double [] z_l = op.getPrimalSolution("z_l").to1DArray();
@@ -293,10 +254,6 @@ public class NodeLocation implements IAlgorithm, java.io.Serializable
 
 		return param;
 	}
-	
-	public void serialize(){}
-	
-	public void deserialize(){}
 	
 	public void printMatrix(double[][] m){
 	    try{
