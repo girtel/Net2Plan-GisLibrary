@@ -88,19 +88,19 @@ public class NodeLocation implements IAlgorithm, java.io.Serializable
 		files.add(Luminarias);
 		files.add(Cells);
 		try {
-			gml_C.buildFromGeoJson(gml_C, files);
+			gml_C.buildFromGeoJson(gml_C, files); // PABLO: ???? (pasarle gml_c???, crear un Arrays.asList in situ si no se usa mas)
 		} catch (Exception e) {};
 		
 		System.out.println("Computing the number of luminaires and cells from files...");
 		Map<Long, GisLayer> layers = gml_C.getLayers();
 		//System.out.println(layers.size());
-		Iterator<Long> gl_iterator = layers.keySet().iterator();
+		Iterator<Long> gl_iterator = layers.keySet().iterator(); // PABLO: Sustituir por un bucle for. Usar Camel conventions
 		while (gl_iterator.hasNext()) {
 			Long key = gl_iterator.next();
 			GisLayer gl = gml_C.getLayer(key);
 			//System.out.println(gl.getName());
 			Collection<GisObject> goc = gl.getObjects().values();
-			for(GisObject go:goc){
+			for(GisObject go:goc){ // PABLO: Lento... el if luminaire layer y cell layer fuera de este bucle
 				if (gl.isLuminairesLayer()) {
 					Luminaire object = (Luminaire) go;
 					L.add(netPlan.addNode(object.getPoint().getX(), object.getPoint().getY(),"Luminaire_"+String.valueOf(object.getId()), null));
