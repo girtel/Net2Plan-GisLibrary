@@ -108,15 +108,14 @@ public class NodeLocation implements IAlgorithm
 		/* Typically, you start reading the input parameters */
 		final Double Dmax = Double.parseDouble (algorithmParameters.get ("Dmax"))/1000; //Max distance in km
 		final Double maxTrafficPerPicoCellMbps = Double.parseDouble (algorithmParameters.get ("maxTrafficPerPicoCellMbps")); //Mbps
-		final String pathLuminaires = algorithmParameters.get("path_luminaires");
-		final String pathCells = algorithmParameters.get("path_cells");	
-		final Double trafPerUser = Double.parseDouble (algorithmParameters.get ("TrafPerUser")); //Mbps
+		final String pathLuminaires = algorithmParameters.get("pathLuminaires");
+		final String pathCells = algorithmParameters.get("pathCells");	
+		final Double trafPerUser = Double.parseDouble (algorithmParameters.get ("trafPerUser")); //Mbps
 		final Double percUsersInStreet = Double.parseDouble (algorithmParameters.get ("percUsersInStreet"))/100; //percentage
 		final Double percCoverageRatio = Double.parseDouble (algorithmParameters.get ("percCoverageRatio"))/100; //percentage
 		final Integer numInhabitants = Integer.parseInt(algorithmParameters.get ("numInhabitants"));
 		final String solverLibraryName = algorithmParameters.get("solverLibraryName");
 		final Double maxSolverTimeInMinutes = Double.parseDouble (algorithmParameters.get ("maxSolverTimeInMinutes"));
-
 
 		createTopology(netPlan, pathLuminaires, pathCells);
 		
@@ -124,24 +123,32 @@ public class NodeLocation implements IAlgorithm
 		final BidiMap<Node,Integer> mapCell2Index = getAsBidiIndexMap (C);
 		final BidiMap<Pair<Node,Node>,Integer> mapLink2Index = new DualHashBidiMap<> ();
 		
+		final Hash
+		
 		final int nL = L.size();	//number of luminaires
 		final int nC = C.size();	//number of cells
 		System.out.println("Number of luminaires: "+nL);
 		System.out.println("Number of cells: "+nC);
 
+		int cellsInCoverageCounter=0;
+		int luminairesInCoverageCounter=0;
 		for (Node c : C) {
 			for (Node l : L) {
 				if (netPlan.getNodePairHaversineDistanceInKm(c, l) <= Dmax) {
 					final int e = mapLink2Index.size();
 					mapLink2Index.put(Pair.of(c, l), e);
+					cellsInCoverageCounter++;
+					luminairesInCoverageCounter++;
 				}
 			}
 		}
 		
 		final int E = mapLink2Index.size ();
 		System.out.println("Number of potential links in coverage: "+E);
+		System.out.println("Number of cells in coverage: "+cellsInCoverageCounter);
+		System.out.println("Number of luminaires in coverage: "+luminairesInCoverageCounter);
 		
-		final DoubleMatrix2D z_ec = DoubleFactory2D.sparse.make(E,nC);
+		final DoubleMatrix2D z_ec = DoubleFactory2D.sparse.make(E,cellsInCoverageCounter);
 		final DoubleMatrix2D z_el = DoubleFactory2D.sparse.make(E,nL);
 		System.out.println("Sparse matrix created!");
 		
@@ -158,7 +165,7 @@ public class NodeLocation implements IAlgorithm
 		}
 		
 		double trafficPerCell = trafPerUser*percUsersInStreet*numInhabitants/nC;
-		DoubleMatrix1D t_c = DoubleFactory1D.sparse.make(nC, trafficPerCell);
+		DoubleMatrix1D t_c = DoubleFactory1D.dense.make(cellsInCoverageCounter, trafficPerCell);
 		System.out.println("t_c vector created");
 		
 		/* Initialize an array with the demanded traffic for each building */
@@ -183,14 +190,14 @@ public class NodeLocation implements IAlgorithm
 		// PABLO: Probar traspuesta. Ver codigo JOM
 		op.addConstraint("(x_e * z_el) <= maxTrafficPerPicoCellMbps * z_l "); // Out of memory here
 		op.addConstraint("(x_e * z_ec) <= t_c"); // Out of memory here
-		op.addConstraint("sum(x_e) >= percCoverageRatio*sum(t_c)");
+		op.addConstraint("sum(x_e) >= percCoverageRatio*sum(t_c)"); // Not feasible solution
 
 
 		System.out.println(solverLibraryName);
 		/* Call the solver to solve the problem */
 		op.solve("cplex" ,"solverLibraryName", solverLibraryName , "maxSolverTimeInSeconds", maxSolverTimeInMinutes*60);
 		
-		if (!op.solutionIsFeasible()) throw new Net2PlanException ("The solver could not find a feasible solution");
+		if (!op.solutionIsFeasible()) throw new Net2PlanException ("The solver " + solverLibraryName+ " could not find a feasible solution");
 		System.out.println("A feasible solution was found. It is guaranteed to be optimal?: " + op.solutionIsOptimal());
 		
 		
@@ -230,11 +237,11 @@ public class NodeLocation implements IAlgorithm
 	{
 		final List<Triple<String, String, String>> param = new LinkedList<Triple<String, String, String>> ();
 
-		param.add (Triple.of ("path_cells" , "data/Centroids5.geojson" , "Cells file"));
-		param.add (Triple.of ("path_luminaires" , "data/luminarias-ct-estudio.geojson" , "Luminaires file"));
+		param.add (Triple.of ("pathCells" , "data/Centroids5.geojson" , "Cells file"));
+		param.add (Triple.of ("pathLuminaires" , "data/luminarias-ct-estudio.geojson" , "Luminaires file"));
 		param.add (Triple.of ("maxTrafficPerPicoCellMbps" , "1024" , "Max Mbps offered by each antenna"));
 		param.add (Triple.of ("Dmax" , "50" , "Max coverage distance in m"));
-		param.add (Triple.of ("TrafPerUser" , "50" , "Traffic per user in Mbps"));
+		param.add (Triple.of ("trafPerUser" , "50" , "Traffic per user in Mbps"));
 		param.add (Triple.of ("percUsersInStreet" , "80" , "Peak % users in the street"));
 		param.add (Triple.of ("percCoverageRatio" , "10" , "Traffic Coverage in %"));
 		param.add (Triple.of ("numInhabitants" , "49966" , "Numbers of inhabitants"));
