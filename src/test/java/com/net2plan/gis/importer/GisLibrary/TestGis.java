@@ -5,6 +5,7 @@ import static org.junit.Assert.*;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
@@ -38,13 +39,7 @@ public class TestGis {
 		files.add(Edificios);
 		files.add(Carreteras);
 		files.add(Luminarias);
-		try {
-			gml.buildFromGeoJson(gml, files);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
+		gml.buildFromGeoJson(Arrays.asList(Edificios , Edificios , Carreteras , Luminarias));
 		layers = gml.getLayers();
 	}
 	

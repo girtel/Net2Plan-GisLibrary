@@ -1,24 +1,20 @@
 package com.net2plan.gis.importer.GisLibrary;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
-import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
-import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.net2plan.interfaces.networkDesign.Net2PlanException;
 
 public class GisMultilayer{
 	
@@ -38,31 +34,32 @@ public class GisMultilayer{
 		if(this.mapLayerId2Layer.isEmpty()){return 1;}
 		return this.mapLayerId2Layer.lastKey() + 1; }
 	
-	public void buildFromGeoJson(GisMultilayer gml, List<File> files) throws IOException{
-
-		ListIterator<File> fileIterator = files.listIterator();
-		while (fileIterator.hasNext()) {
-			File file = fileIterator.next();
-			ObjectMapper objectMapper = new ObjectMapper();
-			GeoJSONParser parser = objectMapper.readValue(file, GeoJSONParser.class);
-			Long layerId = this.getNewLayerUniqueId();
-			//print
-			System.out.println(name+": "+parser.name+" layer loaded.");
-			GisLayer gl = new GisLayer(gml, parser, layerId);
-			this.parseObjects(parser,gl);
-			this.mapLayerId2Layer.put(layerId, gl);
-			this.mapLayerId2LayerName.put(layerId, gl.getName());
-		}
-
+	public void buildFromGeoJson(List<File> files) 
+	{
+		try
+		{
+			for (File file : files)
+			{
+				final ObjectMapper objectMapper = new ObjectMapper();
+				final GeoJSONParser parser = objectMapper.readValue(file, GeoJSONParser.class);
+				final Long layerId = this.getNewLayerUniqueId();
+				//print
+				System.out.println(name+": "+parser.name+" layer loaded.");
+				final GisLayer gl = new GisLayer(this, parser, layerId);
+				this.parseObjects(parser,gl);
+				this.mapLayerId2Layer.put(layerId, gl);
+				this.mapLayerId2LayerName.put(layerId, gl.getName());
+			}
+		} catch (IOException e) { throw new Net2PlanException ("The file could not be read"); }
 	}
 	
-	public void buildFromGeoJson(GisMultilayer gml, File file) throws IOException{
+	public void buildFromGeoJson(File file) throws IOException{
 		ObjectMapper objectMapper = new ObjectMapper();
 		GeoJSONParser parser = objectMapper.readValue(file, GeoJSONParser.class);
 		Long layerId = this.getNewLayerUniqueId();
 		//print
 		System.out.println(name+": "+parser.name+" layer loaded.");
-		GisLayer gl = new GisLayer(gml, parser, layerId);
+		GisLayer gl = new GisLayer(this, parser, layerId);
 		this.parseObjects(parser,gl);
 		this.mapLayerId2Layer.put(layerId, gl);
 		this.mapLayerId2LayerName.put(layerId, gl.getName());
