@@ -27,7 +27,7 @@ public class GisLayer implements Comparable<GisLayer>
 	SortedMap<Long,GisObject> mapUid2GisObject = new TreeMap<> ();
 	GisMultilayer gml;
 
-	public GisLayer(GisMultilayer gml, GeoJSONParser gJSONParser, long id){
+	GisLayer(GisMultilayer gml, GeoJSONParser gJSONParser, long id){
 		this.gml = gml;
 		this.name = gJSONParser.name;
 		
