@@ -4,6 +4,7 @@ package com.net2plan.gis.algorithms;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -121,34 +122,33 @@ public class NodeLocation implements IAlgorithm
 		
 		final BidiMap<Node,Integer> mapLuminaire2Index = getAsBidiIndexMap (L);
 		final BidiMap<Node,Integer> mapCell2Index = getAsBidiIndexMap (C);
-		final BidiMap<Pair<Node,Node>,Integer> mapLink2Index = new DualHashBidiMap<> ();
+		final BidiMap<Pair<Node,Node>,Integer> mapLink2Index = new DualHashBidiMap<>();
 		
-		final Hash
+		Map<Node, Integer> mapCellsInCoverage = new HashMap<>();
+		Map<Node, Integer> mapLuminairesInCoverage = new HashMap<>();
 		
 		final int nL = L.size();	//number of luminaires
 		final int nC = C.size();	//number of cells
 		System.out.println("Number of luminaires: "+nL);
 		System.out.println("Number of cells: "+nC);
 
-		int cellsInCoverageCounter=0;
-		int luminairesInCoverageCounter=0;
 		for (Node c : C) {
 			for (Node l : L) {
 				if (netPlan.getNodePairHaversineDistanceInKm(c, l) <= Dmax) {
 					final int e = mapLink2Index.size();
 					mapLink2Index.put(Pair.of(c, l), e);
-					cellsInCoverageCounter++;
-					luminairesInCoverageCounter++;
+					mapCellsInCoverage.put(c, 1);
+					mapLuminairesInCoverage.put(l, 1);
 				}
 			}
 		}
 		
 		final int E = mapLink2Index.size ();
 		System.out.println("Number of potential links in coverage: "+E);
-		System.out.println("Number of cells in coverage: "+cellsInCoverageCounter);
-		System.out.println("Number of luminaires in coverage: "+luminairesInCoverageCounter);
+		System.out.println("Number of cells in coverage: "+mapCellsInCoverage.size());
+		System.out.println("Number of luminaires in coverage: "+mapLuminairesInCoverage.size());
 		
-		final DoubleMatrix2D z_ec = DoubleFactory2D.sparse.make(E,cellsInCoverageCounter);
+		final DoubleMatrix2D z_ec = DoubleFactory2D.sparse.make(E,nC);
 		final DoubleMatrix2D z_el = DoubleFactory2D.sparse.make(E,nL);
 		System.out.println("Sparse matrix created!");
 		
@@ -165,7 +165,7 @@ public class NodeLocation implements IAlgorithm
 		}
 		
 		double trafficPerCell = trafPerUser*percUsersInStreet*numInhabitants/nC;
-		DoubleMatrix1D t_c = DoubleFactory1D.dense.make(cellsInCoverageCounter, trafficPerCell);
+		DoubleMatrix1D t_c = DoubleFactory1D.dense.make(nC, trafficPerCell);
 		System.out.println("t_c vector created");
 		
 		/* Initialize an array with the demanded traffic for each building */
