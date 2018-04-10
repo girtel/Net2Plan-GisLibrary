@@ -171,10 +171,12 @@ public class NodeLocation implements IAlgorithm
 		/* Initialize an array with the demanded traffic for each building */
 		/* Create the optimization object */
 		OptimizationProblem op = new OptimizationProblem();
+		System.out.println("Optimization problem created");
 		
 		/* Add the decision variables */
 		op.addDecisionVariable("x_e" , false , new int [] {1,E} , 0 , maxTrafficPerPicoCellMbps);
 		op.addDecisionVariable("z_l" , true , new int [] {1,nL} , 0 , 1); 
+		System.out.println("Decision Variables added");
 		
 		/* Add the input parameters */
 		op.setInputParameter("t_c", t_c, "row");
@@ -182,18 +184,20 @@ public class NodeLocation implements IAlgorithm
 		op.setInputParameter("z_el", z_el); // PABLO: negative index here
 		op.setInputParameter("maxTrafficPerPicoCellMbps", maxTrafficPerPicoCellMbps);
 		op.setInputParameter("percCoverageRatio", percCoverageRatio);
+		System.out.println("Input Parameters has been set");
 		
 		/* Add the Objective Function */
 		op.setObjectiveFunction("minimize", "sum(z_l)"); 
+		System.out.println("Objective function has been set");
 		
 		/* Add the constraints */
 		// PABLO: Probar traspuesta. Ver codigo JOM
 		op.addConstraint("(x_e * z_el) <= maxTrafficPerPicoCellMbps * z_l "); // Out of memory here
 		op.addConstraint("(x_e * z_ec) <= t_c"); // Out of memory here
 		op.addConstraint("sum(x_e) >= percCoverageRatio*sum(t_c)"); // Not feasible solution
+		System.out.println("Constraints added");
 
-
-		System.out.println(solverLibraryName);
+		System.out.println("Calling solver....");
 		/* Call the solver to solve the problem */
 		op.solve("cplex" ,"solverLibraryName", solverLibraryName , "maxSolverTimeInSeconds", maxSolverTimeInMinutes*60);
 		
