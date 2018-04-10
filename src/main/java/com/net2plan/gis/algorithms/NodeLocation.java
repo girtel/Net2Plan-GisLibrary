@@ -117,6 +117,7 @@ public class NodeLocation implements IAlgorithm
 		final Integer numInhabitants = Integer.parseInt(algorithmParameters.get ("numInhabitants"));
 		final String solverLibraryName = algorithmParameters.get("solverLibraryName");
 		final Double maxSolverTimeInMinutes = Double.parseDouble (algorithmParameters.get ("maxSolverTimeInMinutes"));
+		System.out.println("perCoverageRatio: "+percCoverageRatio);
 
 		createTopology(netPlan, pathLuminaires, pathCells);
 		
@@ -192,9 +193,9 @@ public class NodeLocation implements IAlgorithm
 		
 		/* Add the constraints */
 		// PABLO: Probar traspuesta. Ver codigo JOM
-		op.addConstraint("(x_e * z_el) <= maxTrafficPerPicoCellMbps * z_l "); // Out of memory here
+		op.addConstraint("(x_e * z_el) <= ( maxTrafficPerPicoCellMbps * z_l ) "); // Out of memory here
 		op.addConstraint("(x_e * z_ec) <= t_c"); // Out of memory here
-		op.addConstraint("sum(x_e) >= percCoverageRatio*sum(t_c)"); // Not feasible solution
+		op.addConstraint("sum(x_e) >= ( percCoverageRatio * sum(t_c) )"); // Not feasible solution
 		System.out.println("Constraints added");
 
 		System.out.println("Calling solver....");
