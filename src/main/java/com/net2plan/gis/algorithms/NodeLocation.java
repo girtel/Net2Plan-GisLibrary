@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.DoubleStream;
 
 import org.apache.commons.collections4.BidiMap;
 import org.apache.commons.collections4.bidimap.DualHashBidiMap;
@@ -209,19 +210,67 @@ public class NodeLocation implements IAlgorithm
 		/* Retrieve info */
 		final double [] z_l = op.getPrimalSolution("z_l").to1DArray();
 		final double [] x_e = op.getPrimalSolution("x_e").to1DArray();
+		
+		for (int e = 0; e < E; e++) {
+			/* Retrieve info */
+			final Pair<Node, Node> pair = mapLink2Index.getKey(e);
+			final Node c = pair.getFirst();
+			final int CellIndex = mapCell2Index.get(c);
+			final Node l = pair.getSecond();
+			final int luminaireIndex = mapLuminaire2Index.get(l);
 
+			if ((z_l[luminaireIndex] == 1) && (x_e[e] > 0)) {
+				if (z_ec.get(e, CellIndex) == 1.0 && z_el.get(e, luminaireIndex) == 1.0) {
+					netPlan.addLink(c, l, x_e[e], netPlan.getNodePairHaversineDistanceInKm(c, l), 200000, null);
+					l.addTag("HASPICOCELL");
+				}
+			}
+		}
+		
+		/* checks */
+		
+		for (Node c : C)
+		{
+			final int CellIndex = mapCell2Index.get(c);
+			if(c.getIncomingLinksAllLayers().isEmpty()){ /* Has the cell incoming links? */
+				if(c.getOutgoingLinksTraffic() > t_c.get(CellIndex)){ /* Exceeds the cell the maximum traffic limit? */
+					throw new Net2PlanException ("The outgoing traffic in a cell exceeds the maximum limit."); }
+			}else{ throw new Net2PlanException ("The cells has one or more incoming links."); }
+		}
+		
+		for (Node l : L) {
+			if (l.getOutgoingLinksAllLayers().isEmpty()) { /* Has the luminaire outgoing links? */
+				if (l.getIncomingLinksAllLayers().isEmpty()) { /* if the luminaire does not have incoming layers... */
+					if (l.hasTag("HASPICOCELL")) { /* ... it must not have the "HASPICOCELL" tag */
+						throw new Net2PlanException ("The luminaire is not tagged correctly. It must not have the \"HASPICOCELL\" tag."); }
+				} else { /* else the luminaire has incoming links... */
+					if (!l.hasTag("HASPICOCELL")) { /* ... it must have the tag.*/
+						throw new Net2PlanException ("The luminaire is not tagged correctly. It must have the \"HASPICOCELL\" tag.");}
+					if (l.getIncomingLinksTraffic() > maxTrafficPerPicoCellMbps) { /* Exceeds the luminaire the maximum traffic limit? */
+						throw new Net2PlanException ("The luminaire exceeds the maximum traffic limit.");}
+				}
+			} else { throw new Net2PlanException ("A luminaire has one or more outgoing links."); }
+		}
+				
 		// 1. Hacer objeto NetPlan con esta solucion
-		
-		
-		
 		// 2. Compruebo restricciones SOBRE el objeto NetPlan
-		
 		// PABLO: Hacer check que compruebe que las cosas van bien!
-		
 		// PABLO: Devolver el coste, pero calculado como suma z_l, no fiarse del op.getOptimalCost() 
 		
-		final double solutionNumLuminariesWithAntenna = DoubleUtils.sum(z_l);
+/*				•	Eje X = Coberturas. Eje Y = # de microceldas. Dos líneas: para 30 Mbps y para 50 Mbps
+				•	Eje X = Coberturas. Eje Y = cobertura / # microceldas. Ese número normalizado para que a 10% salga un valor igual a 1. Le llamamos ROI normalizado.
+				•	Preproceso: para cada microcelda que se pone, ver la macrocelda más cercana. Guardar un contador para cada MACRO, con el número de MICRO que se le asignan. 
+				Gráfico con Eje X = coberturas. Eje Y: # MICRO ASIGNADAS. En cada cobertura, un aspa por cada MACRO, con el # de MICRO ASIGNADAS. 
+				No poner las aspas de las MACRO con cero MICRO
+
+		*/
 		
+		//FORMATO DEL DOCUMENTO 1: 1.Coberturas (Porcentaje); 2.Trafico (30 o 50); 3.#MicroCeldas puestas; 4. #TotalLuminariasCobertura; 5. #Luminarias; 6. #Celdas
+		//FORMATO DEL DOCUMENTO 2 (MACROCELDAS): Lista de número de microceldas en cada macro, guardar solo las no cero.
+		
+		
+		
+		final double solutionNumLuminariesWithAntenna = DoubleUtils.sum(z_l);
 		
 		return "Ok! total cost: " + solutionNumLuminariesWithAntenna; 
 	}
