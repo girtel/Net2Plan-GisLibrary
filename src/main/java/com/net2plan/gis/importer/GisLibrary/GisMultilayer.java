@@ -95,6 +95,12 @@ public class GisMultilayer{
 				Cell cell = new Cell(objectsIterator.next(), gl, id);
 				gl.addObject(cell);
 			}
+		}else if(gl.isLTEAntennasLayer()) { 
+			while (objectsIterator.hasNext()) {
+				long id = gl.getNewObjectUniqueId();
+				LTEAntenna antenna = new LTEAntenna(objectsIterator.next(), gl, id);
+				gl.addObject(antenna);
+			}
 		}
 	}
 	

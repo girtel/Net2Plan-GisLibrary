@@ -32,8 +32,9 @@ public class GisLayer implements Comparable<GisLayer>
 		this.name = gJSONParser.name;
 		
 		boolean isLuminaire = gJSONParser.features.get(0).properties.containsKey("POTENCIA");
+		boolean isLTEAntenna = gJSONParser.features.get(0).properties.containsKey("carrier");
 		String geometryType = gJSONParser.features.get(0).geometry.type;
-		this.typeOfObjectsInside = setLayerType(geometryType, isLuminaire);	
+		this.typeOfObjectsInside = setLayerType(geometryType, isLuminaire, isLTEAntenna);	
 		
 		this.uniqueLayerId = id;
 	}
@@ -44,11 +45,12 @@ public class GisLayer implements Comparable<GisLayer>
 	
 	public long getUniqueLayerId() { return this.uniqueLayerId;}
 
-	public GisConstants.GISLAYERTYPE setLayerType(String geometryType, boolean isLuminaire){
+	public GisConstants.GISLAYERTYPE setLayerType(String geometryType, boolean isLuminaire, boolean isLTEAntenna){
 		if (geometryType.equals("Polygon")){return GisConstants.GISLAYERTYPE.BUILDINGS;}
 		else if(geometryType.equals("LineString")){return GisConstants.GISLAYERTYPE.ROADS;}
-		else if(geometryType.equals("Point") && !isLuminaire){return GisConstants.GISLAYERTYPE.CELLS;}
-		else if(geometryType.equals("Point") && isLuminaire){return GisConstants.GISLAYERTYPE.LUMINAIRES;}
+		else if(geometryType.equals("Point") && !isLuminaire && !isLTEAntenna){return GisConstants.GISLAYERTYPE.CELLS;}
+		else if(geometryType.equals("Point") && isLuminaire && !isLTEAntenna){return GisConstants.GISLAYERTYPE.LUMINAIRES;}
+		else if(geometryType.equals("Point") && !isLuminaire && isLTEAntenna){return GisConstants.GISLAYERTYPE.LTEANTENNA;}
 		else return GisConstants.GISLAYERTYPE.UNKNOWN;
 	}
 	
@@ -67,7 +69,9 @@ public class GisLayer implements Comparable<GisLayer>
 	public boolean isLuminairesLayer () { return typeOfObjectsInside == GisConstants.GISLAYERTYPE.LUMINAIRES; }
 	
 	public boolean isCellsLayer () { return typeOfObjectsInside == GisConstants.GISLAYERTYPE.CELLS; }
-
+	
+	public boolean isLTEAntennasLayer () { return typeOfObjectsInside == GisConstants.GISLAYERTYPE.LTEANTENNA; }
+	
 	public String getName(){ return this.name;}
 	
 	public SortedMap<Long,GisObject> getObjects(){return Collections.unmodifiableSortedMap(this.mapUid2GisObject);}

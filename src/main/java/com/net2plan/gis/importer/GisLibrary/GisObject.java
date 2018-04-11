@@ -70,8 +70,11 @@ public class GisObject implements Comparable <GisObject>
 			List point = coordinatesList;
 			Point2D point2d = new Point2D.Double((double) point.get(0), (double) point.get(1));
 			track.add(point2d);
-			
 		}else if(this.gl.isCellsLayer()){
+			List point = coordinatesList;
+			Point2D point2d = new Point2D.Double((double) point.get(0), (double) point.get(1));
+			track.add(point2d);
+		}else if(this.gl.isLTEAntennasLayer()){
 			List point = coordinatesList;
 			Point2D point2d = new Point2D.Double((double) point.get(0), (double) point.get(1));
 			track.add(point2d);

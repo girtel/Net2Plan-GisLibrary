@@ -2,6 +2,9 @@
 package com.net2plan.gis.algorithms;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -18,6 +21,7 @@ import com.net2plan.gis.importer.GisLibrary.Cell;
 import com.net2plan.gis.importer.GisLibrary.GisLayer;
 import com.net2plan.gis.importer.GisLibrary.GisMultilayer;
 import com.net2plan.gis.importer.GisLibrary.GisObject;
+import com.net2plan.gis.importer.GisLibrary.LTEAntenna;
 import com.net2plan.gis.importer.GisLibrary.Luminaire;
 //import com.net2plan.gui.plugins.networkDesign.topologyPane.TopologyPanel;
 import com.net2plan.interfaces.networkDesign.IAlgorithm;
@@ -51,8 +55,9 @@ public class NodeLocation implements IAlgorithm
 	//private List<Node> B = new ArrayList<>();	//Buildings
 	private List<Node> L = new ArrayList<>();	//Luminaires
 	private List<Node> C = new ArrayList<>();	//Cells
+	private List<Node> LTEAntennas = new ArrayList<>();	//4G
 
-	private void createTopology(NetPlan netPlan, String path_luminaires/*String path_buildings*/, String path_cells){
+	private void createTopology(NetPlan netPlan, String pathLuminaires/*String path_buildings*/, String pathCells, String pathLTEAntenna){
 		System.out.println("creating topology");
 		
 		/* remove topology */
@@ -62,13 +67,13 @@ public class NodeLocation implements IAlgorithm
 		netPlan.removeAllLinks();
 		
 		final GisMultilayer gml_C = new GisMultilayer("Cartagena");
-		gml_C.buildFromGeoJson(Arrays.asList(new File (path_luminaires) , new File (path_cells))); 
+		gml_C.buildFromGeoJson(Arrays.asList(new File (pathLuminaires) , new File (pathCells), new File (pathLTEAntenna))); 
 		
-		System.out.println("Computing the number of luminaires and cells from files...");
+		System.out.println("Computing the number of luminaires, cells and 4G antennas from files...");
 		//System.out.println(layers.size());
 		for (GisLayer gl : gml_C.getLayers().values())
 		{
-			if (!gl.isLuminairesLayer() && !gl.isCellsLayer()) continue; 
+			//if (!gl.isLuminairesLayer() && !gl.isCellsLayer()) continue; 
 			//System.out.println(gl.getName());
 			for(GisObject go : gl.getObjects().values())
 			{ 
@@ -80,6 +85,10 @@ public class NodeLocation implements IAlgorithm
 				{
 					final Cell object = (Cell) go;
 					C.add(netPlan.addNode(object.getPoint().getX(), object.getPoint().getY(),"Cell_"+String.valueOf(object.getId()), null));
+				}else if (gl.isLTEAntennasLayer()) 
+				{
+					final LTEAntenna object = (LTEAntenna) go;
+					LTEAntennas.add(netPlan.addNode(object.getPoint().getX(), object.getPoint().getY(),"4GAntenna_"+String.valueOf(object.getId()), null));
 				}
 			}
 		}
@@ -112,6 +121,7 @@ public class NodeLocation implements IAlgorithm
 		final Double maxTrafficPerPicoCellMbps = Double.parseDouble (algorithmParameters.get ("maxTrafficPerPicoCellMbps")); //Mbps
 		final String pathLuminaires = algorithmParameters.get("pathLuminaires");
 		final String pathCells = algorithmParameters.get("pathCells");	
+		final String pathLTEAntenna = algorithmParameters.get("pathLTEAntenna");	
 		final Double trafPerUser = Double.parseDouble (algorithmParameters.get ("trafPerUser")); //Mbps
 		final Double percUsersInStreet = Double.parseDouble (algorithmParameters.get ("percUsersInStreet"))/100; //percentage
 		final Double percCoverageRatio = Double.parseDouble (algorithmParameters.get ("percCoverageRatio"))/100; //percentage
@@ -120,10 +130,12 @@ public class NodeLocation implements IAlgorithm
 		final Double maxSolverTimeInMinutes = Double.parseDouble (algorithmParameters.get ("maxSolverTimeInMinutes"));
 		System.out.println("perCoverageRatio: "+percCoverageRatio);
 
-		createTopology(netPlan, pathLuminaires, pathCells);
+		createTopology(netPlan, pathLuminaires, pathCells, pathLTEAntenna);
 		
+		final List<Integer> lum2LTEAssociations =  new ArrayList<>(LTEAntennas.size());
 		final BidiMap<Node,Integer> mapLuminaire2Index = getAsBidiIndexMap (L);
 		final BidiMap<Node,Integer> mapCell2Index = getAsBidiIndexMap (C);
+		final BidiMap<Node,Integer> mapLTE2Index = getAsBidiIndexMap (LTEAntennas);
 		final BidiMap<Pair<Node,Node>,Integer> mapLink2Index = new DualHashBidiMap<>();
 		
 		Map<Node, Integer> mapCellsInCoverage = new HashMap<>();
@@ -218,11 +230,22 @@ public class NodeLocation implements IAlgorithm
 			final int CellIndex = mapCell2Index.get(c);
 			final Node l = pair.getSecond();
 			final int luminaireIndex = mapLuminaire2Index.get(l);
+			
+			double distance = Double.MAX_VALUE;
+			int index = -1;
 
 			if ((z_l[luminaireIndex] == 1) && (x_e[e] > 0)) {
 				if (z_ec.get(e, CellIndex) == 1.0 && z_el.get(e, luminaireIndex) == 1.0) {
 					netPlan.addLink(c, l, x_e[e], netPlan.getNodePairHaversineDistanceInKm(c, l), 200000, null);
 					l.addTag("HASPICOCELL");
+	
+					for(Node LTE: LTEAntennas){
+						if(netPlan.getNodePairHaversineDistanceInKm(LTE, l) <= distance){
+							distance = netPlan.getNodePairHaversineDistanceInKm(LTE, l);
+							index = mapLTE2Index.get(LTE);
+						}		
+					}
+					lum2LTEAssociations.add(index, lum2LTEAssociations.get(index)+1);
 				}
 			}
 		}
@@ -265,14 +288,43 @@ public class NodeLocation implements IAlgorithm
 
 		*/
 		
-		//FORMATO DEL DOCUMENTO 1: 1.Coberturas (Porcentaje); 2.Trafico (30 o 50); 3.#MicroCeldas puestas; 4. #TotalLuminariasCobertura; 5. #Luminarias; 6. #Celdas
+		//FORMATO DEL DOCUMENTO 1: 1.Trafico (30 o 50); 2.Coberturas (Porcentaje); 3.#MicroCeldas puestas; 
+		//						   4. #TotalLuminariasCobertura; 5. #Luminarias; 6. #TotalCellsCobertura; 7.#Cells		   
 		//FORMATO DEL DOCUMENTO 2 (MACROCELDAS): Lista de número de microceldas en cada macro, guardar solo las no cero.
 		
+		final double numLuminariesWithAntenna = DoubleUtils.sum(z_l);
 		
 		
-		final double solutionNumLuminariesWithAntenna = DoubleUtils.sum(z_l);
 		
-		return "Ok! total cost: " + solutionNumLuminariesWithAntenna; 
+		
+		/* Save in a file to be loaded in Matlab */
+		PrintWriter writer;
+		try {
+			writer = new PrintWriter("graphs/NodeLocation_"+trafPerUser+"_"+percCoverageRatio+".txt", "UTF-8");
+			writer.println(trafPerUser);
+			writer.println(percCoverageRatio);
+			writer.println(numLuminariesWithAntenna);
+			writer.println(mapLuminairesInCoverage.size());
+			writer.println(nL);
+			writer.println(mapCellsInCoverage.size());
+			writer.println(nC);
+			writer.close();
+			
+			writer = new PrintWriter("graphs/NodeLocation_"+trafPerUser+"_"+percCoverageRatio+"_4G"+".txt", "UTF-8");
+			for(int i=0; i<lum2LTEAssociations.size();i++)
+			{
+				if(lum2LTEAssociations.get(i)>0)writer.println(lum2LTEAssociations.get(i));
+			}
+			writer.close();
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (UnsupportedEncodingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	
+		return "Ok! total cost: " + numLuminariesWithAntenna; 
 	}
 
 	/** Returns a description message that will be shown in the graphical user interface
