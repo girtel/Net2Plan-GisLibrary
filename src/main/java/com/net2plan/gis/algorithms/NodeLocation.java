@@ -311,6 +311,8 @@ public class NodeLocation implements IAlgorithm
 			writer.close();
 			
 			writer = new PrintWriter("graphs/NodeLocation_"+trafPerUser+"_"+percCoverageRatio+"_4G"+".txt", "UTF-8");
+			writer.println(trafPerUser);
+			writer.println(percCoverageRatio);
 			for(int i=0; i<lum2LTEAssociations.size();i++)
 			{
 				if(lum2LTEAssociations.get(i)>0)writer.println(lum2LTEAssociations.get(i));
