@@ -132,7 +132,6 @@ public class NodeLocation implements IAlgorithm
 
 		createTopology(netPlan, pathLuminaires, pathCells, pathLTEAntennas);
 		
-		DoubleMatrix1D lum2LTEAssociations = DoubleFactory1D.dense.make(LTEAntennas.size(), 0);
 		final BidiMap<Node,Integer> mapLuminaire2Index = getAsBidiIndexMap (L);
 		final BidiMap<Node,Integer> mapCell2Index = getAsBidiIndexMap (C);
 		final BidiMap<Node,Integer> mapLTE2Index = getAsBidiIndexMap (LTEAntennas);
@@ -224,6 +223,7 @@ public class NodeLocation implements IAlgorithm
 		final double [] z_l = op.getPrimalSolution("z_l").to1DArray();
 		final double [] x_e = op.getPrimalSolution("x_e").to1DArray();
 		
+		DoubleMatrix1D lum2LTEAssociations = DoubleFactory1D.dense.make(LTEAntennas.size());
 		boolean[] luminaireIsChecked = new boolean[z_l.length];
 		Arrays.fill(luminaireIsChecked, false);
 		
@@ -237,11 +237,11 @@ public class NodeLocation implements IAlgorithm
 			final int luminaireIndex = mapLuminaire2Index.get(l);
 
 			double distance = Double.MAX_VALUE;
-			int index = -1;
+			int indexLTE = -1;
 
 			if ((z_l[luminaireIndex] == 1) && (x_e[e] > 0))
 			{
-				if (z_ec.get(e, CellIndex) == 1.0 && z_el.get(e, luminaireIndex) == 1.0) 
+				if ( (z_ec.get(e, CellIndex) == 1.0) && (z_el.get(e, luminaireIndex) == 1.0) ) 
 				{
 					netPlan.addLink(c, l, x_e[e], netPlan.getNodePairHaversineDistanceInKm(c, l), 200000, null);
 					l.addTag("HASPICOCELL");
@@ -253,13 +253,14 @@ public class NodeLocation implements IAlgorithm
 							if (netPlan.getNodePairHaversineDistanceInKm(LTE, l) < distance) 
 							{
 								distance = netPlan.getNodePairHaversineDistanceInKm(LTE, l);
-								index = mapLTE2Index.get(LTE);
+								indexLTE = mapLTE2Index.get(LTE);
 							}
 						}
-						lum2LTEAssociations.set(index, lum2LTEAssociations.get(index) + 1);
+						
+						lum2LTEAssociations.set(indexLTE, lum2LTEAssociations.get(indexLTE) + 1);
 						luminaireIsChecked[luminaireIndex] = true;
 					}
-			}throw new Net2PlanException ("If there are traffic in a pair, z_ec[index] and z_el[index] must be one.");
+			}else throw new Net2PlanException ("If there is traffic in a pair, z_ec[index] and z_el[index] must be one.");
 			}
 		}
 		
@@ -291,28 +292,11 @@ public class NodeLocation implements IAlgorithm
 				}
 			} else { throw new Net2PlanException ("A luminaire has one or more outgoing links."); }
 		}
-				
-		// 1. Hacer objeto NetPlan con esta solucion
-		// 2. Compruebo restricciones SOBRE el objeto NetPlan
-		// PABLO: Hacer check que compruebe que las cosas van bien!
-		// PABLO: Devolver el coste, pero calculado como suma z_l, no fiarse del op.getOptimalCost() 
 		
-/*				•	Eje X = Coberturas. Eje Y = # de microceldas. Dos líneas: para 30 Mbps y para 50 Mbps
-				•	Eje X = Coberturas. Eje Y = cobertura / # microceldas. Ese número normalizado para que a 10% salga un valor igual a 1. Le llamamos ROI normalizado.
-				•	Preproceso: para cada microcelda que se pone, ver la macrocelda más cercana. Guardar un contador para cada MACRO, con el número de MICRO que se le asignan. 
-				Gráfico con Eje X = coberturas. Eje Y: # MICRO ASIGNADAS. En cada cobertura, un aspa por cada MACRO, con el # de MICRO ASIGNADAS. 
-				No poner las aspas de las MACRO con cero MICRO
-
-		*/
-		
-		//FORMATO DEL DOCUMENTO 1: 1.Trafico (30 o 50); 2.Coberturas (Porcentaje); 3.#MicroCeldas puestas; 
-		//						   4. #TotalLuminariasCobertura; 5. #Luminarias; 6. #TotalCellsCobertura; 7.#Cells		   
-		//FORMATO DEL DOCUMENTO 2 (MACROCELDAS): Lista de número de microceldas en cada macro, guardar solo las no cero.
-		
-		
-		
-		
-		
+		// DOCUMENT 1 FORMAT: 1.# MicroCells; 2.# Luminaires in Coverage; 3.# Luminaires; 
+		//					  4.# Cells in coverage; 5.# Cells; 6. total traffic carried
+		// DOCUMENT 2 FORMAT (MACROCELLS): # microcells in each macrocell. Save only macrocells 
+		//									with at least one microcell connected.
 		
 		/* Save in a file to be loaded in Matlab */
 		PrintWriter writer;
