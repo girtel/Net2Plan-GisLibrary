@@ -227,7 +227,8 @@ public class NodeLocation implements IAlgorithm
 		boolean[] luminaireIsChecked = new boolean[z_l.length];
 		Arrays.fill(luminaireIsChecked, false);
 		
-		for (int e = 0; e < E; e++) {
+		for (int e = 0; e < E; e++) 
+		{
 			/* Retrieve info */
 			final Pair<Node, Node> pair = mapLink2Index.getKey(e);
 			final Node c = pair.getFirst();
@@ -238,14 +239,19 @@ public class NodeLocation implements IAlgorithm
 			double distance = Double.MAX_VALUE;
 			int index = -1;
 
-			if ((z_l[luminaireIndex] == 1) && (x_e[e] > 0)) {
-				if (z_ec.get(e, CellIndex) == 1.0 && z_el.get(e, luminaireIndex) == 1.0) {
+			if ((z_l[luminaireIndex] == 1) && (x_e[e] > 0))
+			{
+				if (z_ec.get(e, CellIndex) == 1.0 && z_el.get(e, luminaireIndex) == 1.0) 
+				{
 					netPlan.addLink(c, l, x_e[e], netPlan.getNodePairHaversineDistanceInKm(c, l), 200000, null);
 					l.addTag("HASPICOCELL");
 					
-					if (!luminaireIsChecked[luminaireIndex]) {
-						for (Node LTE : LTEAntennas) {
-							if (netPlan.getNodePairHaversineDistanceInKm(LTE, l) < distance) {
+					if (!luminaireIsChecked[luminaireIndex]) 
+					{
+						for (Node LTE : LTEAntennas) 
+						{
+							if (netPlan.getNodePairHaversineDistanceInKm(LTE, l) < distance) 
+							{
 								distance = netPlan.getNodePairHaversineDistanceInKm(LTE, l);
 								index = mapLTE2Index.get(LTE);
 							}
@@ -253,8 +259,7 @@ public class NodeLocation implements IAlgorithm
 						lum2LTEAssociations.set(index, lum2LTEAssociations.get(index) + 1);
 						luminaireIsChecked[luminaireIndex] = true;
 					}
-
-				}
+			}throw new Net2PlanException ("If there are traffic in a pair, z_ec[index] and z_el[index] must be one.");
 			}
 		}
 		
@@ -262,7 +267,7 @@ public class NodeLocation implements IAlgorithm
 		
 		/* checks */
 		if(lum2LTEAssociations.zSum() != numLuminariesWithAntenna){ throw new Net2PlanException ("The number of luminaires with micro-cell does not match "
-				+ "the number of luminaires associated with LTE Antennas: "+lum2LTEAssociations.zSum()+" vs "+numLuminariesWithAntenna); }
+				+ "the number of luminaires associated with LTE Antennas: "+numLuminariesWithAntenna+" vs "+lum2LTEAssociations.zSum()); }
 		
 		for (Node c : C)
 		{
@@ -313,18 +318,15 @@ public class NodeLocation implements IAlgorithm
 		PrintWriter writer;
 		try {
 			writer = new PrintWriter("graphs/NodeLocation_"+trafPerUser+"_"+percCoverageRatio+".txt", "UTF-8");
-			writer.println(trafPerUser);
-			writer.println(percCoverageRatio);
 			writer.println(numLuminariesWithAntenna);
 			writer.println(mapLuminairesInCoverage.size());
 			writer.println(nL);
 			writer.println(mapCellsInCoverage.size());
 			writer.println(nC);
+			writer.println(DoubleUtils.sum(x_e));
 			writer.close();
 			
 			writer = new PrintWriter("graphs/NodeLocation_"+trafPerUser+"_"+percCoverageRatio+"_4G"+".txt", "UTF-8");
-			writer.println(trafPerUser);
-			writer.println(percCoverageRatio);
 			for(int i=0; i<lum2LTEAssociations.size();i++)
 			{
 				if(lum2LTEAssociations.get(i)>0.0)writer.println(lum2LTEAssociations.get(i));
