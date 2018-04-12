@@ -132,7 +132,7 @@ public class NodeLocation implements IAlgorithm
 
 		createTopology(netPlan, pathLuminaires, pathCells, pathLTEAntenna);
 		
-		final List<Integer> lum2LTEAssociations =  new ArrayList<>(LTEAntennas.size());
+		DoubleMatrix1D lum2LTEAssociations = DoubleFactory1D.dense.make(LTEAntennas.size(), 0);
 		final BidiMap<Node,Integer> mapLuminaire2Index = getAsBidiIndexMap (L);
 		final BidiMap<Node,Integer> mapCell2Index = getAsBidiIndexMap (C);
 		final BidiMap<Node,Integer> mapLTE2Index = getAsBidiIndexMap (LTEAntennas);
@@ -145,6 +145,7 @@ public class NodeLocation implements IAlgorithm
 		final int nC = C.size();	//number of cells
 		System.out.println("Number of luminaires: "+nL);
 		System.out.println("Number of cells: "+nC);
+		System.out.println("Number of LTE Antennas: "+LTEAntennas.size());
 
 		for (Node c : C) {
 			for (Node l : L) {
@@ -245,12 +246,16 @@ public class NodeLocation implements IAlgorithm
 							index = mapLTE2Index.get(LTE);
 						}		
 					}
-					lum2LTEAssociations.add(index, lum2LTEAssociations.get(index)+1);
+					lum2LTEAssociations.set(index, lum2LTEAssociations.get(index)+1);
 				}
 			}
 		}
 		
+		final double numLuminariesWithAntenna = DoubleUtils.sum(z_l);
+		
 		/* checks */
+		if(lum2LTEAssociations.zSum() != numLuminariesWithAntenna){ throw new Net2PlanException ("The number of luminaires with micro-cell does not match "
+				+ "the number of luminaires associated with LTE Antennas"); }
 		
 		for (Node c : C)
 		{
@@ -292,7 +297,7 @@ public class NodeLocation implements IAlgorithm
 		//						   4. #TotalLuminariasCobertura; 5. #Luminarias; 6. #TotalCellsCobertura; 7.#Cells		   
 		//FORMATO DEL DOCUMENTO 2 (MACROCELDAS): Lista de número de microceldas en cada macro, guardar solo las no cero.
 		
-		final double numLuminariesWithAntenna = DoubleUtils.sum(z_l);
+		
 		
 		
 		
@@ -315,7 +320,7 @@ public class NodeLocation implements IAlgorithm
 			writer.println(percCoverageRatio);
 			for(int i=0; i<lum2LTEAssociations.size();i++)
 			{
-				if(lum2LTEAssociations.get(i)>0)writer.println(lum2LTEAssociations.get(i));
+				if(lum2LTEAssociations.get(i)>0.0)writer.println(lum2LTEAssociations.get(i));
 			}
 			writer.close();
 		} catch (FileNotFoundException e) {
