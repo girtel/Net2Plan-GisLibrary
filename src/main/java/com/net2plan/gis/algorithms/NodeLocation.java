@@ -57,7 +57,7 @@ public class NodeLocation implements IAlgorithm
 	private List<Node> C = new ArrayList<>();	//Cells
 	private List<Node> LTEAntennas = new ArrayList<>();	//4G
 
-	private void createTopology(NetPlan netPlan, String pathLuminaires/*String path_buildings*/, String pathCells, String pathLTEAntenna){
+	private void createTopology(NetPlan netPlan, String pathLuminaires/*String path_buildings*/, String pathCells, String pathLTEAntennas){
 		System.out.println("creating topology");
 		
 		/* remove topology */
@@ -67,7 +67,7 @@ public class NodeLocation implements IAlgorithm
 		netPlan.removeAllLinks();
 		
 		final GisMultilayer gml_C = new GisMultilayer("Cartagena");
-		gml_C.buildFromGeoJson(Arrays.asList(new File (pathLuminaires) , new File (pathCells), new File (pathLTEAntenna))); 
+		gml_C.buildFromGeoJson( Arrays.asList(new File (pathLuminaires) , new File (pathCells), new File (pathLTEAntennas) ) ); 
 		
 		System.out.println("Computing the number of luminaires, cells and 4G antennas from files...");
 		//System.out.println(layers.size());
@@ -121,7 +121,7 @@ public class NodeLocation implements IAlgorithm
 		final Double maxTrafficPerPicoCellMbps = Double.parseDouble (algorithmParameters.get ("maxTrafficPerPicoCellMbps")); //Mbps
 		final String pathLuminaires = algorithmParameters.get("pathLuminaires");
 		final String pathCells = algorithmParameters.get("pathCells");	
-		final String pathLTEAntenna = algorithmParameters.get("pathLTEAntenna");	
+		final String pathLTEAntennas = algorithmParameters.get("pathLTEAntennas");	
 		final Double trafPerUser = Double.parseDouble (algorithmParameters.get ("trafPerUser")); //Mbps
 		final Double percUsersInStreet = Double.parseDouble (algorithmParameters.get ("percUsersInStreet"))/100; //percentage
 		final Double percCoverageRatio = Double.parseDouble (algorithmParameters.get ("percCoverageRatio"))/100; //percentage
@@ -130,7 +130,7 @@ public class NodeLocation implements IAlgorithm
 		final Double maxSolverTimeInMinutes = Double.parseDouble (algorithmParameters.get ("maxSolverTimeInMinutes"));
 		System.out.println("perCoverageRatio: "+percCoverageRatio);
 
-		createTopology(netPlan, pathLuminaires, pathCells, pathLTEAntenna);
+		createTopology(netPlan, pathLuminaires, pathCells, pathLTEAntennas);
 		
 		DoubleMatrix1D lum2LTEAssociations = DoubleFactory1D.dense.make(LTEAntennas.size(), 0);
 		final BidiMap<Node,Integer> mapLuminaire2Index = getAsBidiIndexMap (L);
@@ -224,6 +224,9 @@ public class NodeLocation implements IAlgorithm
 		final double [] z_l = op.getPrimalSolution("z_l").to1DArray();
 		final double [] x_e = op.getPrimalSolution("x_e").to1DArray();
 		
+		boolean[] luminaireIsChecked = new boolean[z_l.length];
+		Arrays.fill(luminaireIsChecked, false);
+		
 		for (int e = 0; e < E; e++) {
 			/* Retrieve info */
 			final Pair<Node, Node> pair = mapLink2Index.getKey(e);
@@ -231,7 +234,7 @@ public class NodeLocation implements IAlgorithm
 			final int CellIndex = mapCell2Index.get(c);
 			final Node l = pair.getSecond();
 			final int luminaireIndex = mapLuminaire2Index.get(l);
-			
+
 			double distance = Double.MAX_VALUE;
 			int index = -1;
 
@@ -239,14 +242,18 @@ public class NodeLocation implements IAlgorithm
 				if (z_ec.get(e, CellIndex) == 1.0 && z_el.get(e, luminaireIndex) == 1.0) {
 					netPlan.addLink(c, l, x_e[e], netPlan.getNodePairHaversineDistanceInKm(c, l), 200000, null);
 					l.addTag("HASPICOCELL");
-	
-					for(Node LTE: LTEAntennas){
-						if(netPlan.getNodePairHaversineDistanceInKm(LTE, l) <= distance){
-							distance = netPlan.getNodePairHaversineDistanceInKm(LTE, l);
-							index = mapLTE2Index.get(LTE);
-						}		
+					
+					if (!luminaireIsChecked[luminaireIndex]) {
+						for (Node LTE : LTEAntennas) {
+							if (netPlan.getNodePairHaversineDistanceInKm(LTE, l) < distance) {
+								distance = netPlan.getNodePairHaversineDistanceInKm(LTE, l);
+								index = mapLTE2Index.get(LTE);
+							}
+						}
+						lum2LTEAssociations.set(index, lum2LTEAssociations.get(index) + 1);
+						luminaireIsChecked[luminaireIndex] = true;
 					}
-					lum2LTEAssociations.set(index, lum2LTEAssociations.get(index)+1);
+
 				}
 			}
 		}
@@ -255,7 +262,7 @@ public class NodeLocation implements IAlgorithm
 		
 		/* checks */
 		if(lum2LTEAssociations.zSum() != numLuminariesWithAntenna){ throw new Net2PlanException ("The number of luminaires with micro-cell does not match "
-				+ "the number of luminaires associated with LTE Antennas"); }
+				+ "the number of luminaires associated with LTE Antennas: "+lum2LTEAssociations.zSum()+" vs "+numLuminariesWithAntenna); }
 		
 		for (Node c : C)
 		{
@@ -352,6 +359,7 @@ public class NodeLocation implements IAlgorithm
 
 		param.add (Triple.of ("pathCells" , "data/Centroids5.geojson" , "Cells file"));
 		param.add (Triple.of ("pathLuminaires" , "data/luminarias-ct-estudio.geojson" , "Luminaires file"));
+		param.add (Triple.of ("pathLTEAntennas" , "data/4G.geojson" , "4G Antennas file"));
 		param.add (Triple.of ("maxTrafficPerPicoCellMbps" , "1024" , "Max Mbps offered by each antenna"));
 		param.add (Triple.of ("Dmax" , "50" , "Max coverage distance in m"));
 		param.add (Triple.of ("trafPerUser" , "50" , "Traffic per user in Mbps"));
