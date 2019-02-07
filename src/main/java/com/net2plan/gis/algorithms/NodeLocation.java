@@ -54,10 +54,11 @@ public class NodeLocation implements IAlgorithm
 	
 	//private List<Node> B = new ArrayList<>();	//Buildings
 	private List<Node> L = new ArrayList<>();	//Luminaires
-	private List<Node> C = new ArrayList<>();	//Cells
+	private List<Node> C_grid = new ArrayList<>();	//Grid Cells
+	private List<Cell> C_density = new ArrayList<>(); //Density Cells
 	private List<Node> LTEAntennas = new ArrayList<>();	//4G
 
-	private void createTopology(NetPlan netPlan, String pathLuminaires/*String path_buildings*/, String pathCells, String pathLTEAntennas){
+	private void createTopology(NetPlan netPlan, String pathLuminaires/*String path_buildings*/, String pathCells_grid, String pathCells_density, String pathLTEAntennas){
 		System.out.println("creating topology");
 		
 		/* remove topology */
@@ -67,7 +68,7 @@ public class NodeLocation implements IAlgorithm
 		netPlan.removeAllLinks();
 		
 		final GisMultilayer gml_C = new GisMultilayer("Cartagena");
-		gml_C.buildFromGeoJson( Arrays.asList(new File (pathLuminaires) , new File (pathCells), new File (pathLTEAntennas) ) ); 
+		gml_C.buildFromGeoJson( Arrays.asList(new File (pathLuminaires) , new File (pathCells_grid), new File (pathCells_density), new File (pathLTEAntennas) ) ); 
 		
 		System.out.println("Computing the number of luminaires, cells and 4G antennas from files...");
 		//System.out.println(layers.size());
@@ -84,7 +85,14 @@ public class NodeLocation implements IAlgorithm
 				}else if (gl.isCellsLayer()) 
 				{
 					final Cell object = (Cell) go;
-					C.add(netPlan.addNode(object.getPoint().getX(), object.getPoint().getY(),"Cell_"+String.valueOf(object.getId()), null));
+					
+					if(object.getProperty("quadrant").equals(null)) {
+						C_grid.add(netPlan.addNode(object.getPoint().getX(), object.getPoint().getY(),"Cell_grid_"+String.valueOf(object.getId()), null));
+						System.out.println("######## I AM LOADING A GRID CELL!!!! ########");
+					}else {
+						C_density.add(object);
+						System.out.println("######## I AM LOADING A DENSITY CELL!!!! ########");
+					}
 				}else if (gl.isLTEAntennasLayer()) 
 				{
 					final LTEAntenna object = (LTEAntenna) go;
@@ -120,7 +128,8 @@ public class NodeLocation implements IAlgorithm
 		final Double Dmax = Double.parseDouble (algorithmParameters.get ("Dmax"))/1000; //Max distance in km
 		final Double maxTrafficPerPicoCellMbps = Double.parseDouble (algorithmParameters.get ("maxTrafficPerPicoCellMbps")); //Mbps
 		final String pathLuminaires = algorithmParameters.get("pathLuminaires");
-		final String pathCells = algorithmParameters.get("pathCells");	
+		final String pathCells_grid = algorithmParameters.get("pathCells_grid");	
+		final String pathCells_density = algorithmParameters.get("pathCells_density");
 		final String pathLTEAntennas = algorithmParameters.get("pathLTEAntennas");	
 		final Double trafPerUser = Double.parseDouble (algorithmParameters.get ("trafPerUser")); //Mbps
 		final Double percUsersInStreet = Double.parseDouble (algorithmParameters.get ("percUsersInStreet"))/100; //percentage
@@ -130,10 +139,12 @@ public class NodeLocation implements IAlgorithm
 		final Double maxSolverTimeInMinutes = Double.parseDouble (algorithmParameters.get ("maxSolverTimeInMinutes"));
 		System.out.println("perCoverageRatio: "+percCoverageRatio);
 
-		createTopology(netPlan, pathLuminaires, pathCells, pathLTEAntennas);
+		createTopology(netPlan, pathLuminaires, pathCells_grid, pathCells_density, pathLTEAntennas);
+		
+		
 		
 		final BidiMap<Node,Integer> mapLuminaire2Index = getAsBidiIndexMap (L);
-		final BidiMap<Node,Integer> mapCell2Index = getAsBidiIndexMap (C);
+		final BidiMap<Node,Integer> mapCell2Index = getAsBidiIndexMap (C_grid);
 		final BidiMap<Node,Integer> mapLTE2Index = getAsBidiIndexMap (LTEAntennas);
 		final BidiMap<Pair<Node,Node>,Integer> mapLink2Index = new DualHashBidiMap<>();
 		
@@ -141,12 +152,12 @@ public class NodeLocation implements IAlgorithm
 		Map<Node, Integer> mapLuminairesInCoverage = new HashMap<>();
 		
 		final int nL = L.size();	//number of luminaires
-		final int nC = C.size();	//number of cells
+		final int nC = C_grid.size();	//number of cells
 		System.out.println("Number of luminaires: "+nL);
 		System.out.println("Number of cells: "+nC);
 		System.out.println("Number of LTE Antennas: "+LTEAntennas.size());
 
-		for (Node c : C) {
+		for (Node c : C_grid) {
 			for (Node l : L) {
 				if (netPlan.getNodePairHaversineDistanceInKm(c, l) <= Dmax) {
 					final int e = mapLink2Index.size();
@@ -270,7 +281,7 @@ public class NodeLocation implements IAlgorithm
 		if(lum2LTEAssociations.zSum() != numLuminariesWithAntenna){ throw new Net2PlanException ("The number of luminaires with micro-cell does not match "
 				+ "the number of luminaires associated with LTE Antennas: "+numLuminariesWithAntenna+" vs "+lum2LTEAssociations.zSum()); }
 		
-		for (Node c : C)
+		for (Node c : C_grid)
 		{
 			final int CellIndex = mapCell2Index.get(c);
 			if(c.getIncomingLinksAllLayers().isEmpty()){ /* Has the cell incoming links? */

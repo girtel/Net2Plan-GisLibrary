@@ -17,7 +17,7 @@ public class GisObject implements Comparable <GisObject>
 	private final GeoJSONParser.GeoJSONFeature gjsonfeatures;
 	private final String type;
 	private final String geometryType;
-	private SortedMap<String,String> properties;
+	private SortedMap<String,Object> properties;
 	private final List<Point2D> track;
 
 	
@@ -87,7 +87,7 @@ public class GisObject implements Comparable <GisObject>
 
 	public String getType() {return type;}
 
-	public SortedMap<String, String> getProperties() {return Collections.unmodifiableSortedMap(this.properties);}
+	public SortedMap<String, Object> getProperties() {return Collections.unmodifiableSortedMap(this.properties);}
 
 	public String getGeometryType() {return geometryType;}
 
@@ -99,17 +99,25 @@ public class GisObject implements Comparable <GisObject>
 		this.properties.remove(propertyName, propertyName);
 	}
 	
-	public Optional<String> getProperty (String propertyName){
+	public Optional<Object> getProperty (String propertyName){
 		return Optional.of(this.properties.get(propertyName));
 	}
 
 	public double getPropertyAsDouble(String propertyName, double defaultValue) {
 		try {
-			return Double.parseDouble(properties.get(propertyName));
+			return (double) properties.get(propertyName);
 		} catch (Exception e) {
 			return defaultValue;
 		}
 
+	}
+	
+	public void setProperty(String propertyName, Object value) {
+		try {
+			this.properties.put(propertyName, value);
+		} catch (Exception e) {
+			System.out.println("Property not found");
+		}
 	}
 
 	@Override

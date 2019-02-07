@@ -37,13 +37,13 @@ public class GeoJSONParser {
 	
 	public static class GeoJSONFeature{
     	public String type;
-    	public SortedMap<String,String> properties;
+    	public SortedMap<String,Object> properties;
     	public GeoJSONGeometry geometry;
     	
     	/*public JoseLuisFeatures (@JsonProperty("type") String type, @JsonProperty("properties") Map<String,String> properties,
     						@JsonProperty("geometry") Map<String, Object> geometry){*/
     		
-    	public GeoJSONFeature (@JsonProperty("type") String type, @JsonProperty("properties") SortedMap<String,String> properties,
+    	public GeoJSONFeature (@JsonProperty("type") String type, @JsonProperty("properties") SortedMap<String,Object> properties,
     			@JsonProperty("geometry") GeoJSONGeometry geometry){
     	
     		this.type = type;

@@ -12,6 +12,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import com.net2plan.gis.importer.GisLibrary.*;
@@ -25,10 +26,40 @@ import cern.colt.matrix.tdouble.DoubleMatrix2D;
 
 
 public class Test {
+	
+	
+	static Map<String, String> nombreMap = new HashMap<String, String>();
+	
+	public static Optional<Object> getProperty (String propertyName){
+		return Optional.of(nombreMap.get(propertyName));
+	}
 
+	
 	public static void main(String[] args) throws Throwable {
-		
-//		
+
+	nombreMap.put("nombre", null);
+	
+	System.out.println(nombreMap.get("nombre"));
+
+	
+	nombreMap.put("nombre", "3");
+	System.out.println(nombreMap.size());
+	System.out.println(nombreMap.get("nombre"));
+	
+	
+	System.out.println("-----------------");
+	System.out.println((String)getProperty("nombre").get());
+	System.out.println("-----------------");
+	
+	
+	nombreMap.put("nombre", "2");
+	System.out.println(nombreMap.size());
+	System.out.println(nombreMap.get("nombre"));
+	
+	
+	
+
+	
 //		
 //		
 //		
