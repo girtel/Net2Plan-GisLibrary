@@ -37,6 +37,18 @@ public class Test {
 	
 	public static void main(String[] args) throws Throwable {
 
+	double[] quadrant_c = new double[10];
+	System.out.println(quadrant_c[0]);
+	java.util.Arrays.fill(quadrant_c, 0, 10-1, 0);
+	System.out.println("filling....");	
+	System.out.println(quadrant_c[0]);
+	System.out.println(quadrant_c);
+		
+		
+		
+		
+		
+		
 	nombreMap.put("nombre", null);
 	
 	System.out.println(nombreMap.get("nombre"));

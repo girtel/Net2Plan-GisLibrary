@@ -100,7 +100,7 @@ public class GisObject implements Comparable <GisObject>
 	}
 	
 	public Optional<Object> getProperty (String propertyName){
-		return Optional.of(this.properties.get(propertyName));
+		return Optional.ofNullable(this.properties.get(propertyName));
 	}
 
 	public double getPropertyAsDouble(String propertyName, double defaultValue) {
