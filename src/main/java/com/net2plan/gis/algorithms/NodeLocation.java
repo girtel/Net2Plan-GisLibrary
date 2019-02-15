@@ -36,7 +36,7 @@ import cern.colt.matrix.tdouble.DoubleFactory1D;
 import cern.colt.matrix.tdouble.DoubleFactory2D;
 import cern.colt.matrix.tdouble.DoubleMatrix1D;
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
-
+import java.util.stream.*;
 
 
 /** This is a template to be used in the lab work, a starting point for the students to develop their programs
@@ -159,7 +159,7 @@ public class NodeLocation implements IAlgorithm
 				if (netPlan.getNodePairHaversineDistanceInKm(c, l) <= Dmax) {
 					final int e = mapLink2Index.size();
 					mapLink2Index.put(Pair.of(c, l), e);
-					mapCellsInCoverage.put(c, 1);
+					mapCellsInCoverage.put(c, mapCell2Index.get(c));
 					mapLuminairesInCoverage.put(l, mapLuminaire2Index.get(l));
 				}
 			}
@@ -187,8 +187,10 @@ public class NodeLocation implements IAlgorithm
 		}
 		
 		//## HERE WE NEED TO IDENTIFY WHAT CELLS CORRESPOND TO EACH QUADRANT ##		
-		double [] t_c = setDensitiesInCells(mapCell2Index, mapLuminairesInCoverage, nL, C_density, trafPerUser, percUsersInStreet);
+		double [] t_c = setDensitiesInCells(mapCellsInCoverage, nC, mapLuminairesInCoverage, nL, C_density, trafPerUser, percUsersInStreet);
 		System.out.println("t_c vector created");
+		
+		System.out.println("percCoverageRatio * sum(t_c) = "+ percCoverageRatio * DoubleStream.of(t_c).sum());
 		
 		/* Initialize an array with the demanded traffic for each building */
 		/* Create the optimization object */
@@ -356,7 +358,7 @@ public class NodeLocation implements IAlgorithm
 		param.add (Triple.of ("pathLuminaires" , "data/luminarias-ct-estudio.geojson" , "Luminaires file"));
 		param.add (Triple.of ("pathLTEAntennas" , "data/4G.geojson" , "4G Antennas file"));
 		param.add (Triple.of ("maxTrafficPerPicoCellMbps" , "1024" , "Max Mbps offered by each antenna"));
-		param.add (Triple.of ("Dmax" , "50" , "Max coverage distance in m"));
+		param.add (Triple.of ("Dmax" , "16" , "Max coverage distance in m"));
 		param.add (Triple.of ("trafPerUser" , "50" , "Traffic per user in Mbps"));
 		param.add (Triple.of ("percUsersInStreet" , "80" , "Peak % users in the street"));
 		param.add (Triple.of ("percCoverageRatio" , "10" , "Traffic Coverage in %"));
@@ -393,9 +395,8 @@ public class NodeLocation implements IAlgorithm
 		return res;
 	}
 	
-	private static double[] setDensitiesInCells(BidiMap<Node,Integer> mapCell2Index, Map<Node, Integer> mapLuminairesInCoverage, int nL, List<Cell> C_density, double trafPerUser, double percUsersInStreet) 
+	private static double[] setDensitiesInCells(Map<Node, Integer> mapCellsInCoverage, int nC, Map<Node, Integer> mapLuminairesInCoverage, int nL, List<Cell> C_density, double trafPerUser, double percUsersInStreet) 
 	{
-		int nC = mapCell2Index.size();
 		
 		int[] quadrant_c = new int[nC];
 		int[] quadrant_l = new int[nL];
@@ -422,14 +423,14 @@ public class NodeLocation implements IAlgorithm
 			
 			
 			
-			for(Node c_grid : mapCell2Index.keySet()) {
+			for(Node c_grid : mapCellsInCoverage.keySet()) {
 				double c_grid_x = c_grid.getXYPositionMap().getX();
 				double c_grid_y = c_grid.getXYPositionMap().getY();
 				/*System.out.println("c_grid_x: "+c_grid_x);
 				System.out.println("c_grid_y: "+c_grid_y);
 				System.out.println("############################################################################# ");*/
 				if( (c_grid_x > c_density_xmin && c_grid_x < c_density_xmax) && (c_grid_y > c_density_ymin && c_grid_y < c_density_ymax) ) {
-					quadrant_c[mapCell2Index.get(c_grid)] = (int) c_density.getProperty("quadrant").get();
+					quadrant_c[mapCellsInCoverage.get(c_grid)] = (int) c_density.getProperty("quadrant").get();
 				}
 			}
 			
@@ -449,14 +450,14 @@ public class NodeLocation implements IAlgorithm
 		}
 		
 		
-        Map<Integer, Integer> occurrenceMap = new HashMap<>();
+        Map<Integer, Integer> occurrenceMapCells = new HashMap<>();
         for (int key : quadrant_c) {
-            if (occurrenceMap.containsKey(key)) {
-                int occurrence = occurrenceMap.get(key);
+            if (occurrenceMapCells.containsKey(key)) {
+                int occurrence = occurrenceMapCells.get(key);
                 occurrence++;
-                occurrenceMap.put(key, occurrence);
+                occurrenceMapCells.put(key, occurrence);
             } else {
-            	occurrenceMap.put(key, 1);
+            	occurrenceMapCells.put(key, 1);
             }
         }
         
@@ -479,28 +480,28 @@ public class NodeLocation implements IAlgorithm
         
 
         // Just to check if the quadrant has been calculated correctly
-        for (Integer key : occurrenceMap.keySet()) {
-            int occurrence = occurrenceMap.get(key);
+        for (Integer key : occurrenceMapCells.keySet()) {
+            int occurrence = occurrenceMapCells.get(key);
             if(key != 0) {
             	/*System.out.println(key);
                 System.out.println((double) densityMap.get(key));
                 System.out.println((double) occurrence);*/
                 double traf = (double) densityMap.get(key) / (double) occurrence * trafPerUser * percUsersInStreet;
-                System.out.println("Cells in quadrant "+key + ": " + occurrence+". Being the traffic in each cell = density("+densityMap.get(key)+") / ocurrences("+occurrence+") * trafPerUser("+trafPerUser +")* percUsersInStreet("+percUsersInStreet+") = "+ traf+". The total traffic in quadrant "+key+" is: "+ Math.floor(traf*occurrence/1024)+" Gbps");
-            }else System.out.println("Cells out of range (no quadrant assigned): "+occurrence);
+                System.out.println("Cells in coverage in quadrant "+key + ": " + occurrence+". Being the traffic in each cell = density("+densityMap.get(key)+") / ocurrences("+occurrence+") * trafPerUser("+trafPerUser +") * percUsersInStreet("+percUsersInStreet+") = "+ traf+". The total traffic in quadrant "+key+" is: "+ Math.floor(traf*occurrence/1024)+" Gbps");
+            }else System.out.println("Cells out of range (no quadrant assigned and/or not in coverage): "+occurrence);
         }
         
-        for(Node c_grid : mapCell2Index.keySet()) {
-        	int index = mapCell2Index.get(c_grid);
+        for(Node c_grid : mapCellsInCoverage.keySet()) {
+        	int index = mapCellsInCoverage.get(c_grid);
         	int cellQuadrant = quadrant_c[index];
         	if(cellQuadrant != 0) {
-            	System.out.println("##################################################");
+            	/*System.out.println("##################################################");
             	System.out.println("t_c[index] "+ t_c[index]);
             	System.out.println("cellQuadrant "+ cellQuadrant);
-            	System.out.println("densityMap.get(cellQuadrant) "+ densityMap.get(cellQuadrant));
-            	System.out.println("occurrenceMap.get(cellQuadrant) "+ occurrenceMap.get(cellQuadrant));
-            	t_c[index] = (double) densityMap.get(cellQuadrant) / (double) occurrenceMap.get(cellQuadrant) * trafPerUser * percUsersInStreet;
-            	System.out.println("t_c[index] "+ t_c[index]);
+            	System.out.println("densityMap.get(cellQuadrant): "+ densityMap.get(cellQuadrant)+" users");
+            	System.out.println("occurrenceMapCells.get(cellQuadrant): "+ occurrenceMapCells.get(cellQuadrant) +" in coverage");*/
+            	t_c[index] = (double) densityMap.get(cellQuadrant) / (double) occurrenceMapCells.get(cellQuadrant) * trafPerUser * percUsersInStreet;
+            	//System.out.println("t_c[index] "+ t_c[index]+" Mbps");
         	}
         }
 		return t_c;
