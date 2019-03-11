@@ -128,7 +128,6 @@ public class NodeLocation implements IAlgorithm
 		final Double trafPerUser = Double.parseDouble (algorithmParameters.get ("trafPerUser")); //Mbps
 		final Double percUsersInStreet = Double.parseDouble (algorithmParameters.get ("percUsersInStreet"))/100; //percentage
 		final Double percCoverageRatio = Double.parseDouble (algorithmParameters.get ("percCoverageRatio"))/100; //percentage
-		final Integer numInhabitants = Integer.parseInt(algorithmParameters.get ("numInhabitants"));
 		final String solverLibraryName = algorithmParameters.get("solverLibraryName");
 		final Double maxSolverTimeInMinutes = Double.parseDouble (algorithmParameters.get ("maxSolverTimeInMinutes"));
 		System.out.println("perCoverageRatio: "+percCoverageRatio);
@@ -318,6 +317,7 @@ public class NodeLocation implements IAlgorithm
 			writer.println(mapCellsInCoverage.size());
 			writer.println(nC);
 			writer.println(DoubleUtils.sum(x_e));
+			writer.println(DoubleStream.of(t_c).sum());
 			writer.close();
 			
 			writer = new PrintWriter("graphs/NodeLocation_"+trafPerUser+"_"+percCoverageRatio+"_4G"+".txt", "UTF-8");
@@ -362,7 +362,6 @@ public class NodeLocation implements IAlgorithm
 		param.add (Triple.of ("trafPerUser" , "50" , "Traffic per user in Mbps"));
 		param.add (Triple.of ("percUsersInStreet" , "80" , "Peak % users in the street"));
 		param.add (Triple.of ("percCoverageRatio" , "10" , "Traffic Coverage in %"));
-		param.add (Triple.of ("numInhabitants" , "49966" , "Numbers of inhabitants"));
 		param.add (Triple.of ("solverLibraryName" , "cplex" , "Solver Library Name"));
 		param.add (Triple.of ("maxSolverTimeInMinutes" , "1" , "Max Solver time in minutes"));
 
